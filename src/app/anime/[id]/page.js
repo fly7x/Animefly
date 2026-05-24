@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 export const viewport  = { themeColor: "#07060b" };
 
 export function generateMetadata({ params }) {
-  return { title: `Anime — AnimeDex` };
+  return { title: `Anime — Fly Anime` };
 }
 
 export default function AnimeDetailPage({ params }) {
