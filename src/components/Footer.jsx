@@ -55,33 +55,11 @@ function StatusDot({ up }) {
   return <span className={up ? styles.dotUp : styles.dotDown} />;
 }
 
-/* AnimeDex demon skull logo - matches navbar and favicon */
-function AnimeDexLogo() {
+function FlyAnimeLogo() {
   return (
-    <svg width="32" height="32" viewBox="0 0 64 64" fill="none">
-      {/* Horns */}
-      <path d="M15 5 C12 14 17 23 21 27 C17 21 12 13 15 5Z" fill="currentColor" opacity="0.9"/>
-      <path d="M49 5 C52 14 47 23 43 27 C47 21 52 13 49 5Z" fill="currentColor" opacity="0.9"/>
-      {/* Cranium */}
-      <ellipse cx="32" cy="27" rx="17" ry="15" fill="currentColor" opacity="0.95"/>
-      {/* Jaw */}
-      <path d="M17 36 C16 44 19 50 23 52 L24 52 C21 49 18 44 18 38Z" fill="currentColor" opacity="0.6"/>
-      <path d="M47 36 C48 44 45 50 41 52 L40 52 C43 49 46 44 46 38Z" fill="currentColor" opacity="0.6"/>
-      <path d="M23 44 Q32 50 41 44 L40 53 Q32 57 24 53Z" fill="currentColor" opacity="0.75"/>
-      {/* Teeth */}
-      <rect x="25" y="50" width="2.5" height="4.5" rx="0.8" fill="rgba(7,6,11,0.9)"/>
-      <rect x="29" y="50" width="2.5" height="5.5" rx="0.8" fill="rgba(7,6,11,0.9)"/>
-      <rect x="33.5" y="50" width="2.5" height="4.5" rx="0.8" fill="rgba(7,6,11,0.9)"/>
-      {/* Nose cavity */}
-      <path d="M29 34 L32 30 L35 34 L34 38 L30 38Z" fill="rgba(7,6,11,0.85)"/>
-      {/* Left eye */}
-      <ellipse cx="23" cy="26" rx="5.5" ry="5" fill="rgba(7,6,11,0.9)"/>
-      <ellipse cx="23" cy="26" rx="3" ry="2.8" fill="rgba(255,64,96,0.9)"/>
-      <ellipse cx="23" cy="26" rx="1.2" ry="2.4" fill="rgba(7,6,11,1)"/>
-      {/* Right eye */}
-      <ellipse cx="41" cy="26" rx="5.5" ry="5" fill="rgba(7,6,11,0.9)"/>
-      <ellipse cx="41" cy="26" rx="3" ry="2.8" fill="rgba(255,64,96,0.9)"/>
-      <ellipse cx="41" cy="26" rx="1.2" ry="2.4" fill="rgba(7,6,11,1)"/>
+    <svg width="48" height="32" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="0" y="26" fontFamily="Inter,sans-serif" fontWeight="900" fontSize="28" fill="#e8417a">F</text>
+      <text x="16" y="26" fontFamily="Inter,sans-serif" fontWeight="900" fontSize="28" fill="#ffffff">A</text>
     </svg>
   );
 }
