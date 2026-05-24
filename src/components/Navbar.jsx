@@ -7,38 +7,13 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
 import styles from "./Navbar.module.css";
 
-/* ── AnimeDex demon skull — properly proportioned ─────────── */
-function AnimeDexIcon() {
+function FlyAnimeIcon() {
   return (
-    <svg width="24" height="24" viewBox="0 0 64 64" fill="none">
-      {/* Left horn: base y=20, tip y=2 */}
-      <path d="M18 20 C15 11 13 5 16 2 C19 5 20 11 20 20Z" fill="currentColor" opacity="0.92"/>
-      {/* Right horn */}
-      <path d="M46 20 C49 11 51 5 48 2 C45 5 44 11 44 20Z" fill="currentColor" opacity="0.92"/>
-      {/* Cranium: centred lower so brow/eyes are fully visible */}
-      <ellipse cx="32" cy="31" rx="18" ry="16" fill="currentColor" opacity="0.96"/>
-      {/* Cheekbones / sides */}
-      <path d="M15 35 C13 42 15 50 19 54 L22 53 C18 49 16 43 17 37Z" fill="currentColor" opacity="0.72"/>
-      <path d="M49 35 C51 42 49 50 45 54 L42 53 C46 49 48 43 47 37Z" fill="currentColor" opacity="0.72"/>
-      {/* Jaw */}
-      <path d="M22 49 Q32 57 42 49 L41 58 Q32 63 23 58Z" fill="currentColor" opacity="0.80"/>
-      {/* Teeth — inside jaw, so bg-colored */}
-      <rect x="24.5" y="54" width="3"   height="5"   rx="1" fill="rgba(7,6,11,1)"/>
-      <rect x="28.5" y="53" width="3.5" height="6.5" rx="1" fill="rgba(7,6,11,1)"/>
-      <rect x="33"   y="53" width="3.5" height="6.5" rx="1" fill="rgba(7,6,11,1)"/>
-      <rect x="37.5" y="54" width="3"   height="5"   rx="1" fill="rgba(7,6,11,1)"/>
-      {/* Nasal cavity */}
-      <path d="M29 39 L32 34 L35 39 L34 43 L30 43Z" fill="rgba(7,6,11,0.9)"/>
-      {/* Left eye socket — y=31 lines up with cranium centre */}
-      <ellipse cx="23" cy="31" rx="6"   ry="5.5" fill="rgba(7,6,11,0.93)"/>
-      <ellipse cx="23" cy="31" rx="4"   ry="3.8"  fill="rgba(255,60,85,0.92)"/>
-      <ellipse cx="23" cy="31" rx="1.6" ry="3.2"  fill="rgba(7,6,11,1)"/>
-      <ellipse cx="21.5" cy="29" rx="1" ry="1.5" fill="rgba(255,255,255,0.42)" transform="rotate(-15,21.5,29)"/>
-      {/* Right eye socket */}
-      <ellipse cx="41" cy="31" rx="6"   ry="5.5" fill="rgba(7,6,11,0.93)"/>
-      <ellipse cx="41" cy="31" rx="4"   ry="3.8"  fill="rgba(255,60,85,0.92)"/>
-      <ellipse cx="41" cy="31" rx="1.6" ry="3.2"  fill="rgba(7,6,11,1)"/>
-      <ellipse cx="39.5" cy="29" rx="1" ry="1.5" fill="rgba(255,255,255,0.42)" transform="rotate(-15,39.5,29)"/>
+    <svg width="48" height="32" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* F — pink */}
+      <text x="0" y="26" fontFamily="Inter,sans-serif" fontWeight="900" fontSize="28" fill="#e8417a">F</text>
+      {/* A — white, slightly overlapping */}
+      <text x="16" y="26" fontFamily="Inter,sans-serif" fontWeight="900" fontSize="28" fill="#ffffff">A</text>
     </svg>
   );
 }
