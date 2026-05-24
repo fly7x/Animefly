@@ -1,54 +1,50 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Inter:wght@300;400;500;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,400;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-/* ═══════════════════════════════════════════════════════════
-   SUCCUBUS DESIGN SYSTEM — Token Layer
-   Deep reds · Abyssal blacks · Amethyst purples · Blood glow
-   ═══════════════════════════════════════════════════════════ */
 :root {
-  /* ── Backgrounds — layered abyss ── */
-  --bg:            #07060b;
-  --bg-card:       #0d0b14;
-  --bg-elevated:   #13101e;
-  --bg-hover:      #1a1628;
-  --bg-glass:      rgba(13,11,20,0.72);
-  --bg-input:      #0f0d18;
+  /* ── Backgrounds ── */
+  --bg:            #0e0e12;
+  --bg-card:       #141418;
+  --bg-elevated:   #1a1a20;
+  --bg-hover:      #202028;
+  --bg-glass:      rgba(14,14,18,0.80);
+  --bg-input:      #141418;
 
   /* ── Borders ── */
-  --border:        rgba(180,60,90,0.08);
-  --border-md:     rgba(180,60,90,0.16);
-  --border-hi:     rgba(180,60,90,0.28);
-  --border-purple: rgba(140,80,200,0.20);
+  --border:        rgba(232,65,122,0.08);
+  --border-md:     rgba(232,65,122,0.16);
+  --border-hi:     rgba(232,65,122,0.28);
+  --border-purple: rgba(232,65,122,0.15);
 
-  /* ── Primary accent — crimson blood ── */
-  --accent:        #c0394d;
-  --accent-hover:  #d4455a;
-  --accent-soft:   rgba(192,57,77,0.18);
-  --accent-glow:   rgba(192,57,77,0.32);
-  --accent-dim:    rgba(192,57,77,0.08);
-  --accent-deep:   #8b1a28;
+  /* ── Primary accent — Fly Anime pink ── */
+  --accent:        #e8417a;
+  --accent-hover:  #f0527f;
+  --accent-soft:   rgba(232,65,122,0.18);
+  --accent-glow:   rgba(232,65,122,0.32);
+  --accent-dim:    rgba(232,65,122,0.08);
+  --accent-deep:   #b02d5c;
 
-  /* ── Secondary — amethyst ── */
-  --purple:        #9b59b6;
-  --purple-hover:  #b06acc;
-  --purple-soft:   rgba(155,89,182,0.16);
-  --purple-glow:   rgba(155,89,182,0.28);
-  --purple-dim:    rgba(155,89,182,0.07);
+  /* ── Secondary ── */
+  --purple:        #e8417a;
+  --purple-hover:  #f0527f;
+  --purple-soft:   rgba(232,65,122,0.16);
+  --purple-glow:   rgba(232,65,122,0.28);
+  --purple-dim:    rgba(232,65,122,0.07);
 
-  /* ── Tertiary — bone/gold ── */
-  --gold:          #c9a96e;
-  --gold-soft:     rgba(201,169,110,0.14);
-  --gold-glow:     rgba(201,169,110,0.22);
+  /* ── Tertiary ── */
+  --gold:          #e8417a;
+  --gold-soft:     rgba(232,65,122,0.14);
+  --gold-glow:     rgba(232,65,122,0.22);
 
   /* ── Text ── */
-  --text-1: #f0eaf5;
-  --text-2: #9a8faa;
-  --text-3: #5a5068;
-  --text-4: #352e42;
+  --text-1: #ffffff;
+  --text-2: #a0a0b0;
+  --text-3: #606070;
+  --text-4: #353540;
 
   /* ── Typography ── */
-  --font-display: 'Cinzel', serif;
+  --font-display: 'Inter', sans-serif;
   --font-body:    'Inter', sans-serif;
-  --font-serif:   'Crimson Pro', serif;
+  --font-serif:   'Inter', sans-serif;
 
   /* ── Radii ── */
   --r-xs:  3px;
@@ -62,12 +58,12 @@
   --nav-h:     64px;
   --container: 1400px;
 
-  /* ── Shadows — deep & dramatic ── */
+  /* ── Shadows ── */
   --shadow:        0 2px 16px rgba(0,0,0,0.6);
   --shadow-lg:     0 12px 50px rgba(0,0,0,0.8);
-  --shadow-accent: 0 4px 28px rgba(192,57,77,0.30);
-  --shadow-purple: 0 4px 28px rgba(155,89,182,0.24);
-  --shadow-card:   0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(180,60,90,0.10);
+  --shadow-accent: 0 4px 28px rgba(232,65,122,0.30);
+  --shadow-purple: 0 4px 28px rgba(232,65,122,0.24);
+  --shadow-card:   0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(232,65,122,0.10);
 
   /* ── Transitions ── */
   --t-fast: 0.15s ease;
@@ -75,6 +71,7 @@
   --t-slow: 0.40s ease;
   --t-spring: cubic-bezier(0.16, 1, 0.3, 1);
 }
+
 
 /* ═══════════════════════════════════════════════════════════
    RESET & BASE
