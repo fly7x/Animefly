@@ -10,9 +10,9 @@ export const viewport = {
 };
 
 export const metadata = {
-  title: { default: "AnimeDex — Watch Anime Free", template: "%s | AnimeDex" },
+  title: { default: "Fly Anime — Watch Anime Free", template: "%s | Fly Anime" },
   description: "Stream anime in HD. Sub & Dub available. No account required.",
-  keywords: ["anime", "watch anime", "animedex", "anime streaming", "free anime"],
+  keywords: ["anime", "watch anime", "fly-anime", "anime streaming", "free anime"],
 };
 
 export default function RootLayout({ children }) {
