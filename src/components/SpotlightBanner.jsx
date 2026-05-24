@@ -70,7 +70,7 @@ export default function SpotlightBanner({ spotlights = [], loading = false }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.35 }}
-        >Thousands of souls await. Your descent begins now.</motion.p>
+        >Thousands of anime await you. Stream free in HD, sub & dub.</motion.p>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
