@@ -89,7 +89,7 @@ export default function HomeClient({ initialData }) {
           <div className={styles.sectionHeader}>
             <div className={styles.titleWrap}>
               <span className={styles.titleAccent} />
-              <h2 className="section-title">Continue Your Descent</h2>
+              <h2 className="section-title"><h2 className="section-title">Continue Watching</h2></h2>
             </div>
             <Link href="/profile" className={styles.viewAll}>
               View All
