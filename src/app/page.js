@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import HomeClient from "@/components/HomeClient";
 
 export const revalidate = 300;
-export const metadata = { title: "AnimeDex — Watch Anime Free" };
+export const metadata = { title: "Fly Anime — Watch Anime Free" };
 
 async function getHomeData() {
   try {
