@@ -78,7 +78,7 @@ export default function Footer() {
         <div className={styles.brand}>
           <Link href="/" className={styles.logoWrap}>
             <div className={styles.logoIcon}>
-              <AnimeDexLogo />
+              <FlyAnimeLogo />
             </div>
             <div className={styles.logoText}>
               <span className={styles.logoMain}>Anime</span>
@@ -137,9 +137,9 @@ export default function Footer() {
       {/* Bottom */}
       <div className={styles.bottom}>
         <p className={styles.disclaimer}>
-          AnimeDex does not host any video files. All content is sourced from publicly available third-party providers.
+          Fly Anime does not host any video files. All content is sourced from publicly available third-party providers.
         </p>
-        <p className={styles.copy}>© {new Date().getFullYear()} AnimeDex</p>
+        <p className={styles.copy}>© {new Date().getFullYear()} Fly Anime</p>
       </div>
     </footer>
   );
