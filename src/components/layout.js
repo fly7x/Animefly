@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import { AuthProvider } from "@/components/AuthProvider";
 
 export const metadata = {
-  title: { default: "Fly Anime — Watch Anime Free", template: "%s | Animedex" },
+  title: { default: "Fly Anime — Watch Anime Free", template: "%s | Fly Anime" },
   description: "Watch anime online in HD. Sub & Dub available. No account required.",
   keywords: ["anime", "watch anime", "animedex", "anime streaming", "free anime"],
 };
