@@ -168,7 +168,7 @@ export default {
     // ── Health check ─────────────────────────────────────────────────────────
     if (url.pathname === "/health" || url.pathname === "/") {
       return Response.json(
-        { ok: true, service: "animedex-cf-proxy" },
+        { ok: true, service: "flyanime-cf-proxy" },
         { headers: corsHeaders() }
       );
     }
