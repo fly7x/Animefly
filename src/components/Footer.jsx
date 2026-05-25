@@ -88,7 +88,7 @@ export default function Footer() {
 
           <p className={styles.brandDesc}>
             Stream anime in HD — sub &amp; dub.<br />
-            No soul required. Always free.
+             Always free.
           </p>
 
           {/* API Status */}
