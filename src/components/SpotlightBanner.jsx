@@ -196,7 +196,7 @@ export default function SpotlightBanner({ spotlights = [], loading = false }) {
               <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
                 <Link href={`/anime/${item.id}`} className={styles.watchBtn}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-                  Claim This Soul
+                  Watch Now
                 </Link>
               </motion.div>
               <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
