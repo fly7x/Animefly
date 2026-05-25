@@ -465,16 +465,16 @@ export default function WatchClient({ animeId, epSlug }) {
                       {cryEpsLoad ? "Loading episodes..." : `Loading from ${srcName}…`}
                     </p>
                     <p className={styles.summonSub}>
-                      {cryEpsLoad ? "Cataloguing episodes from the underworld" : `Breaching ${srcName} — stand by`}
+                      {cryEpsLoad ? "Fetching episode list..." : `Connecting To ${srcName}...`}
                     </p>
                   </div>
                 );
               })()}
               {!activeSrcId && !cryStreamLoad && !cryEpsLoad && (
                 <div className={styles.playerState}>
-                  <span className={styles.stateIcon}>☠</span>
-                  <p className={styles.summonTitle}>Awakening the portal…</p>
-                  <p className={styles.summonSub}>Selecting the strongest conduit</p>
+                  <span className={styles.stateIcon}></span>
+                  <p className={styles.summonTitle}>Finding best source...</p>
+                  <p className={styles.summonSub}>Please Wait</p>
                 </div>
               )}
               {activeSrcId && !cryEpsLoad && !cryStreamLoad && cryStreamErr && !crySelSrc && (
