@@ -87,7 +87,7 @@ export default function Navbar() {
             whileHover={{ scale: 1.08 }}
             whileTap={{ scale: 0.95 }}
           >
-            <AnimeDexIcon />
+            <FlyAnimeIcon />
           </motion.div>
           <span className={styles.logoText}>
             <span className={styles.logoMain}>Anime</span><span className={styles.logoDex}>Dex</span>
