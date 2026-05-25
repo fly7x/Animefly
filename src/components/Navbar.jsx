@@ -88,7 +88,7 @@ export default function Navbar() {
             <FlyAnimeIcon />
           </motion.div>
           <span className={styles.logoText}>
-            <span className={styles.logoMain}>Anime</span><span className={styles.logoDex}>Dex</span>
+            <span className={styles.logoMain}>Fly</span><span className={styles.logoDex}>Anime</span>
           </span>
         </Link>
 
