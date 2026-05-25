@@ -145,7 +145,7 @@ export default function ProfileClient() {
             <ellipse cx="32" cy="32" rx="3" ry="7.5" fill="#07060b"/>
           </svg>
         </div>
-        <h2 className={styles.loginTitle}>Sign in to AnimeDex</h2>
+        <h2 className={styles.loginTitle}>Sign In To Fly Anime</h2>
         <p className={styles.loginDesc}>Connect your AniList account to sync your watchlist, track progress, rate anime, and view your statistics.</p>
         <a href="/api/auth/login" className={styles.loginBtn}>Sign in with AniList</a>
         {recent.length > 0 && <p className={styles.localNote}>Your local history is shown below ↓</p>}
