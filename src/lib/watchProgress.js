@@ -4,7 +4,7 @@
  * Value: { [animeId]: { animeId, animeName, poster, epSlug, epNumber, epTitle, watchedAt } }
  */
 
-const KEY = "animedex_progress";
+const KEY = "flyanime_progress";
 
 export function getProgress() {
   if (typeof window === "undefined") return {};
