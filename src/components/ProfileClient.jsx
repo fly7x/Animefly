@@ -191,10 +191,10 @@ export default function ProfileClient() {
 
       {aniStats && (
         <div className={`container ${styles.quickStats}`}>
-          <StatCard label="Souls Consumed"  value={aniStats.count || 0}/>
-          <StatCard label="Sacrifices Made"       value={(aniStats.episodesWatched||0).toLocaleString()}/>
-          <StatCard label="Hours Surrendered"   value={fmtMins(aniStats.minutesWatched||0)} accent/>
-          <StatCard label="Avg. Judgment"     value={aniStats.meanScore ? `${aniStats.meanScore}%` : "N/A"}/>
+          <StatCard label="Anime Watched"  value={aniStats.count || 0}/>
+          <StatCard label="Episodes Watched"       value={(aniStats.episodesWatched||0).toLocaleString()}/>
+          <StatCard label="Hours Watched"   value={fmtMins(aniStats.minutesWatched||0)} accent/>
+          <StatCard label="Mean Score"     value={aniStats.meanScore ? `${aniStats.meanScore}%` : "N/A"}/>
         </div>
       )}
 
