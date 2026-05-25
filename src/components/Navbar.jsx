@@ -131,7 +131,7 @@ export default function Navbar() {
                 onChange={handleInput}
                 onFocus={() => suggestions.length && setShowSug(true)}
                 onBlur={() => setTimeout(() => setShowSug(false), 180)}
-                placeholder="Name your prey…"
+                placeholder="Search Animes"
                 className={styles.input}
                 aria-label="Search"
               />
