@@ -136,30 +136,6 @@ export const CRYSOLINE_SOURCES = [
   { id: "kuudere",       name: "Kuudere",       site: "kuudere.ru",            langs: ["en","ja"], hasServers: false },
 ];
 
-  // ── INACTIVE SOURCES (commented out — re-enable as needed) ───────────────
-  { id: "animekai",      name: "AnimeKai",      site: "anikai.to",              langs: ["en","ja"],        hasServers: false },
-  { id: "kickassanime",  name: "KickAssAnime",  site: "kaa.it",                langs: ["en","ja"],        hasServers: false },
-  { id: "animeparadise", name: "AnimeParadise", site: "animeparadise.moe",      langs: ["en","ja"],        hasServers: false },
-  // { id: "animeheaven",   name: "AnimeHeaven",   site: "animeheaven.me",         langs: ["en","ja"],        hasServers: false },
-  // { id: "animeyy",       name: "AnimeYY",       site: "animeyy.com",            langs: ["en","ja"],        hasServers: false },
-  // { id: "animenexus",    name: "AnimeNexus",    site: "anime.nexus",            langs: ["en","ja"],        hasServers: false },
-  // { id: "animeonsen",    name: "AnimeOnsen",    site: "animeonsen.xyz",         langs: ["en","ja"],        hasServers: false },
-  // { id: "uniquestream",  name: "UniqueStream",  site: "anime.uniquestream.net", langs: ["en","ja"],        hasServers: false },
-  // { id: "animerevival",  name: "AnimeRevival",  site: "animerevival.xyz",       langs: ["en","ja","tl"],   hasServers: false },
-  // ── Sources with server selection ────────────────────────────────────────
-  // { id: "anicore",       name: "Anicore",       site: "anikage.cc",             langs: ["en","ja","id"],   hasServers: true  },
-  // { id: "anidap",        name: "Anidap",        site: "anidap.se",              langs: ["en","ja","id"],   hasServers: true  },
-  // { id: "animex",        name: "Animex",        site: "animex.one",             langs: ["en","ja","id"],   hasServers: true  },
-  // { id: "animeav1",      name: "AnimeAV1",      site: "animeav1.com",           langs: ["es"],             hasServers: true  },
-  // { id: "animelib",      name: "AnimeLib",      site: "v3.animelib.org",        langs: ["ru","ja"],        hasServers: true  },
-  // { id: "animemeow",     name: "AnimeMeow",     site: "animemeow.xyz",          langs: ["es","ja"],        hasServers: true  },
-  // { id: "animenix",      name: "AnimeNix",      site: "animenix.com",           langs: ["es","ja"],        hasServers: true  },
-  // ── Other language sources ────────────────────────────────────────────────
-  // { id: "anime3rb",      name: "Anime3rb",      site: "anime3rb.com",           langs: ["ar","ja"],        hasServers: false },
-  // { id: "lunaranime",    name: "LunarAnime",    site: "lunaranime.ru",          langs: ["ru","en","ja"],   hasServers: false },
-  // { id: "kuudere",       name: "Kuudere",       site: "kuudere.ru",             langs: ["en","ja"],        hasServers: false },
-];
-
 export const DEFAULT_SOURCE_ID = "animegg";
 
 // English-primary sources (best for English-speaking audiences)
