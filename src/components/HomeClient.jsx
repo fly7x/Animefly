@@ -137,19 +137,19 @@ export default function HomeClient({ initialData }) {
         {/* Left column — primary sections */}
         <div className={styles.primaryCol}>
           <Section
-            title="Souls in Demand"
+            title="Currently Trending"
             animes={trending}
             viewAllHref="/browse?category=top-airing"
             loading={loading}
           />
           <Section
-            title="Freshly Summoned"
+            title="Recently Updated"
             animes={latest}
             viewAllHref="/browse?category=recently-updated"
             loading={loading}
           />
           <Section
-            title="Sealed by the Masses"
+            title="Most Favorited"
             animes={favorites}
             viewAllHref="/browse?category=most-favorite"
             loading={loading}
@@ -163,7 +163,7 @@ export default function HomeClient({ initialData }) {
             <div className={styles.top10Card}>
               <div className={styles.top10Header}>
                 <span className={styles.titleAccent} />
-                <h3 className="section-title">Top 10 Condemned</h3>
+                <h3 className="section-title">Top 10 Today</h3>
               </div>
               <div className={styles.top10List}>
                 {loading
@@ -212,7 +212,7 @@ export default function HomeClient({ initialData }) {
             <div className={styles.airingCard}>
               <div className={styles.airingHeader}>
                 <span className={styles.titleAccent} />
-                <h3 className="section-title">Airing from the Inferno</h3>
+                <h3 className="section-title">Top Airing</h3>
                 <Link href="/browse?category=top-airing" className={styles.airingViewAll}>All →</Link>
               </div>
               <div className={styles.airingGrid}>
@@ -234,10 +234,10 @@ export default function HomeClient({ initialData }) {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <p className={styles.abyssEyebrow}>∞ The collection is bottomless ∞</p>
-          <h2 className={styles.abyssTitle}>Thousands of souls yet unclaimed</h2>
+          <p className={styles.abyssEyebrow}>Always Growing</p>
+          <h2 className={styles.abyssTitle}>Thousands Of Anime Await you</h2>
           <p className={styles.abyssDesc}>
-            Every series is a deal with the devil. Browse the full catalogue and seal your fate.
+            Browse the full catalogue
           </p>
           <div className={styles.abyssBtns}>
             <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}>
