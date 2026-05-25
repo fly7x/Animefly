@@ -462,7 +462,7 @@ export default function WatchClient({ animeId, epSlug }) {
                       </svg>
                     </div>
                     <p className={styles.summonTitle}>
-                      {cryEpsLoad ? "Binding to the source…" : `Summoning souls from ${srcName}…`}
+                      {cryEpsLoad ? "Loading episodes..." : `Loading from ${srcName}…`}
                     </p>
                     <p className={styles.summonSub}>
                       {cryEpsLoad ? "Cataloguing episodes from the underworld" : `Breaching ${srcName} — stand by`}
