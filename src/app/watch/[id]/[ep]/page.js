@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 export const viewport = { themeColor: "#07060b" };
 
 export function generateMetadata() {
-  return { title: "Watch — AnimeDex" };
+  return { title: "Watch — Fly Anime" };
 }
 
 export default function WatchPage({ params }) {
