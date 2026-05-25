@@ -71,7 +71,7 @@ export default function SearchClient() {
               className={styles.input}
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Whisper the name of your desire…"
+              placeholder="Search anime titles…"
               autoFocus
             />
             {input && (
@@ -100,7 +100,7 @@ export default function SearchClient() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <span className={styles.sugLabel}>The damned have watched:</span>
+            <span className={styles.sugLabel}>Popular searches:</span>
             {SUGGESTIONS.map(s => (
               <motion.button
                 key={s}
@@ -146,8 +146,8 @@ export default function SearchClient() {
         {!loading && !error && q && animes.length === 0 && (
           <motion.div key="empty" className={styles.emptyState} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <p className={styles.emptyIcon}>🔍</p>
-            <p className={styles.emptyTitle}>No souls match this incantation</p>
-            <p className={styles.emptyText}>Speak the name differently. The abyss is listening.</p>
+            <p className={styles.emptyTitle}>No Results Found</p>
+            <p className={styles.emptyText}>Try A Different Keyword Or Check Spelling.</p>
           </motion.div>
         )}
 
