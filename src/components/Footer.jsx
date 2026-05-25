@@ -57,9 +57,9 @@ function StatusDot({ up }) {
 
 function FlyAnimeLogo() {
   return (
-    <svg width="48" height="32" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <text x="0" y="26" fontFamily="Inter,sans-serif" fontWeight="900" fontSize="28" fill="#e8417a">F</text>
-      <text x="16" y="26" fontFamily="Inter,sans-serif" fontWeight="900" fontSize="28" fill="#ffffff">A</text>
+    <svg width="56" height="32" viewBox="0 0 56 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="0" y="26" fontFamily="Inter,Arial Black,sans-serif" fontWeight="900" fontSize="28" fill="#e8417a">F</text>
+      <text x="20" y="26" fontFamily="Inter,Arial Black,sans-serif" fontWeight="900" fontSize="28" fill="#7ee8f8">A</text>
     </svg>
   );
 }
