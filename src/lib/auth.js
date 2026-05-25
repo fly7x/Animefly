@@ -58,7 +58,7 @@ export async function fetchAniListUser(accessToken) {
  * Watch progress stored in localStorage (client-side).
  * Structure: { [animeId]: { epSlug, epNumber, animeTitle, poster, timestamp } }
  */
-export const WATCH_KEY = "animedex_watch_progress";
+export const WATCH_KEY = "flyanime_watch_progress";
 
 export function getWatchProgress() {
   if (typeof window === "undefined") return {};
