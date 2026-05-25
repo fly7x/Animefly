@@ -267,7 +267,7 @@ export default function AnimeDetailClient({ animeId, initialData }) {
               </div>
               {eps.length === 0 ? (
                 <p className={styles.emptyMsg}>
-                  {loading ? "Loading episodes…" : "This series has not yet been summoned."}
+                  {loading ? "Loading episodes…" : "No episodes available yet."}
                 </p>
               ) : (
                 <>
