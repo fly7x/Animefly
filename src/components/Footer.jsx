@@ -82,7 +82,7 @@ export default function Footer() {
             </div>
             <div className={styles.logoText}>
               <span className={styles.logoMain}>Fly</span>
-              <span className={styles.logoDex}>Anime</span>
+              <span className={styles.logoFly}>Anime</span>
             </div>
           </Link>
 
