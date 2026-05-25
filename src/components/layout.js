@@ -6,7 +6,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 export const metadata = {
   title: { default: "Fly Anime — Watch Anime Free", template: "%s | Fly Anime" },
   description: "Watch anime online in HD. Sub & Dub available. No account required.",
-  keywords: ["anime", "watch anime", "animedex", "anime streaming", "free anime"],
+  keywords: ["anime", "watch anime", "Fly Anime", "anime streaming", "free anime"],
 };
 
 export default function RootLayout({ children }) {
