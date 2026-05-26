@@ -403,7 +403,47 @@ export default function WatchClient({ animeId, epSlug }) {
     const avail = PROVIDERS.filter(p => buildEmbedUrl(p.id, embedCtx) !== null);
     if (avail.length && !avail.find(p => p.id === embedProvider)) setEmbedProvider(avail[0].id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentEp?.epSlug, tmdbId]);
+    }, [currentEp?.epSlug, tmdbId]);
+
+  // ── Fetch AniKoto embed URLs for current episode ──────────────────────────
+  useEffect(() => {
+    if (!anime?.name || !epNumber) return;
+
+    async function fetchAnikoto() {
+      try {
+        const recentRes = await fetch(`/api/anikoto?action=recent&page=1`);
+        const recentData = await recentRes.json();
+        const rows = recentData?.data || recentData?.anime || [];
+
+        const title = anime.name.toLowerCase();
+        let match = rows.find(r =>
+          r.title?.toLowerCase().includes(title) ||
+          title.includes(r.title?.toLowerCase())
+        );
+
+        if (!match) return;
+
+        const seriesRes = await fetch(`/api/anikoto?action=series&id=${match.id}`);
+        const seriesData = await seriesRes.json();
+        const episodes = seriesData?.episodes || [];
+
+        const ep = episodes.find(e => e.episode_number === epNumber) || episodes[epNumber - 1];
+        if (!ep) return;
+
+        setAnikotoEmbs({
+          sub: ep.embed_url?.sub || null,
+          dub: ep.embed_url?.dub || null,
+        });
+      } catch (e) {
+        console.warn("[anikoto]", e.message);
+      }
+    }
+
+    fetchAnikoto();
+  }, [anime?.name, epNumber]);
+
+  const sidebarSections = [
+
 
   const sidebarSections = [
     ...(seasons.length > 0 ? [{ label: "Seasons",           items: seasons }]           : []),
