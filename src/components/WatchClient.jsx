@@ -560,7 +560,7 @@ export default function WatchClient({ animeId, epSlug }) {
                   onStreamError={handleStreamError}
                 />
               )}
-            </>
+                        </>
           )}
 
           {/* Embedded player — disabled */}
@@ -582,7 +582,7 @@ export default function WatchClient({ animeId, epSlug }) {
                 />
               )}
             </>
-          )} */}
+          )}
         </div>
 
         {/* ── Control panel ─────────────────────────────────────────────── */}
@@ -774,7 +774,7 @@ export default function WatchClient({ animeId, epSlug }) {
                 </div>
               </div>
             </div>
-          )} */}
+          )} 
         </div>
 
         {/* Episode nav with prefetch on hover */}
