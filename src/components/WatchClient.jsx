@@ -570,17 +570,30 @@ export default function WatchClient({ animeId, epSlug }) {
                 <div className={styles.playerState}><span>📡</span><p>Select a source below.</p></div>
               )}
               {embedUrl && (
-                <iframe
-                  key={`${embedProvider}-${embedUrl}-${embedReload}`}
-                  src={embedUrl}
-                  className={styles.iframe}
-                  frameBorder="0"
-                  scrolling="no"
-                  allowFullScreen
-                  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-                  title={`${anime?.name || "Anime"} Episode ${epNumber}`}
-                />
-              )}
+  <div className={styles.playerState}>
+    <span>🎬</span>
+    <p>{anime?.name || "Anime"} — Episode {epNumber}</p>
+    <a
+      href={embedUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        marginTop: "16px",
+        display: "inline-block",
+        backgroundColor: "#e8417a",
+        color: "#fff",
+        padding: "12px 28px",
+        borderRadius: "8px",
+        fontWeight: 700,
+        textDecoration: "none",
+        fontSize: "15px",
+      }}
+    >
+      Watch on MegaPlay →
+    </a>
+  </div>
+)}
+
             </>
           )}
         </div>
