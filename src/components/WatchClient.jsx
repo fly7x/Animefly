@@ -391,6 +391,8 @@ export default function WatchClient({ animeId, epSlug }) {
   // ── Embedded ──────────────────────────────────────────────────────────────
   const embedCtx = currentEp ? {
   tmdbId, season: 1, episode: epNumber, type: "tv", lang: embedLang,
+  anilistId: anilistId,
+  episode: epNumber,
   anikotoEmbedSub: anikotoEmbs.sub,
   anikotoEmbedDub: anikotoEmbs.dub,
  } : null;
