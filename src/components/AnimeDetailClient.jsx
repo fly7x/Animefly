@@ -109,7 +109,7 @@ export default function AnimeDetailClient({ animeId, initialData }) {
 
   if (error && !data) return (
     <div className={styles.errPage}>
-      <p className={styles.errMsg}>The spirits have abandoned this realm.</p>
+      <p className={styles.errMsg}>There Is Nothing Here...</p>
       <button className={styles.retryBtn} onClick={() => window.location.reload()}>Retry</button>
     </div>
   );
