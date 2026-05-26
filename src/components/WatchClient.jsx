@@ -562,7 +562,7 @@ export default function WatchClient({ animeId, epSlug }) {
           )}
 
           {/* Embedded player — disabled */}
-          {/* {currentEp && sourceMode === "embedded" && (
+           {currentEp && sourceMode === "embedded" && (
             <>
               {!embedUrl && (
                 <div className={styles.playerState}><span>📡</span><p>Select a source below.</p></div>
@@ -736,7 +736,7 @@ export default function WatchClient({ animeId, epSlug }) {
           )}
 
           {/* Embedded control panel — disabled */}
-          {/* {sourceMode === "embedded" && (
+          {sourceMode === "embedded" && (
             <div className={styles.cryBody}>
               <div className={styles.ctrlRow}>
                 <span className={styles.ctrlLabel}>Provider</span>
