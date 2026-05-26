@@ -109,9 +109,6 @@ export default function WatchClient({ animeId, epSlug }) {
 
   // ── Mode ──────────────────────────────────────────────────────────────────
   const [sourceMode, setSourceMode] = useState("crysoline");
-  const [anikotoId,   setAnikotoId]   = useState(null);
-  const [anikotoEmbs, setAnikotoEmbs] = useState({ sub: null, dub: null });
-
 
   // ── Source state ──────────────────────────────────────────────────────────
   const [sourceMap,     setSourceMap]     = useState({});
@@ -390,12 +387,8 @@ export default function WatchClient({ animeId, epSlug }) {
 
   // ── Embedded ──────────────────────────────────────────────────────────────
   const embedCtx = currentEp ? {
-  tmdbId, season: 1, episode: epNumber, type: "tv", lang: embedLang,
-  anilistId: anilistId,
-  episode: epNumber,
-  anikotoEmbedSub: anikotoEmbs.sub,
-  anikotoEmbedDub: anikotoEmbs.dub,
- } : null;
+    tmdbId, season: 1, episode: epNumber, type: "tv", lang: embedLang,
+  } : null;
   const embedUrl     = embedCtx ? buildEmbedUrl(embedProvider, embedCtx) : null;
   const availEmbed   = embedCtx ? PROVIDERS.filter(p => buildEmbedUrl(p.id, embedCtx) !== null).map(p => p.id) : [];
   const visibleEmbed = showMoreEmbed ? PROVIDERS : PRIMARY_EMBED;
@@ -405,46 +398,7 @@ export default function WatchClient({ animeId, epSlug }) {
     const avail = PROVIDERS.filter(p => buildEmbedUrl(p.id, embedCtx) !== null);
     if (avail.length && !avail.find(p => p.id === embedProvider)) setEmbedProvider(avail[0].id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentEp?.epSlug, tmdbId]);
-
-  // ── Fetch AniKoto embed URLs for current episode ──────────────────────────
-  useEffect(() => {
-    if (!anime?.name || !epNumber) return;
-
-    async function fetchAnikoto() {
-      try {
-        const recentRes = await fetch(`/api/anikoto?action=recent&page=1`);
-        const recentData = await recentRes.json();
-        const rows = recentData?.data || recentData?.anime || [];
-
-        const title = anime.name.toLowerCase();
-        let match = rows.find(r =>
-          r.title?.toLowerCase().includes(title) ||
-          title.includes(r.title?.toLowerCase())
-        );
-
-        if (!match) return;
-
-        const seriesRes = await fetch(`/api/anikoto?action=series&id=${match.id}`);
-        const seriesData = await seriesRes.json();
-        const episodes = seriesData?.episodes || [];
-
-        const ep = episodes.find(e => e.episode_number === epNumber) || episodes[epNumber - 1];
-        if (!ep) return;
-
-        setAnikotoEmbs({
-          sub: ep.embed_url?.sub || null,
-          dub: ep.embed_url?.dub || null,
-        });
-      } catch (e) {
-        console.warn("[anikoto]", e.message);
-      }
-    }
-
-        fetchAnikoto();
-  }, [anime?.name, epNumber]);   // ← closes useEffect
-
-
+  }, [currentEp?.epSlug, tmdbId]);
 
   const sidebarSections = [
     ...(seasons.length > 0 ? [{ label: "Seasons",           items: seasons }]           : []),
@@ -508,19 +462,19 @@ export default function WatchClient({ animeId, epSlug }) {
                       </svg>
                     </div>
                     <p className={styles.summonTitle}>
-                      {cryEpsLoad ? "Loading episodes..." : `Loading from ${srcName}…`}
+                      {cryEpsLoad ? "Binding to the source…" : `Summoning souls from ${srcName}…`}
                     </p>
                     <p className={styles.summonSub}>
-                      {cryEpsLoad ? "Fetching episode list..." : `Connecting To ${srcName}...`}
+                      {cryEpsLoad ? "Cataloguing episodes from the underworld" : `Breaching ${srcName} — stand by`}
                     </p>
                   </div>
                 );
               })()}
               {!activeSrcId && !cryStreamLoad && !cryEpsLoad && (
                 <div className={styles.playerState}>
-                  <span className={styles.stateIcon}></span>
-                  <p className={styles.summonTitle}>Finding best source...</p>
-                  <p className={styles.summonSub}>Please Wait</p>
+                  <span className={styles.stateIcon}>☠</span>
+                  <p className={styles.summonTitle}>Awakening the portal…</p>
+                  <p className={styles.summonSub}>Selecting the strongest conduit</p>
                 </div>
               )}
               {activeSrcId && !cryEpsLoad && !cryStreamLoad && cryStreamErr && !crySelSrc && (
@@ -560,42 +514,29 @@ export default function WatchClient({ animeId, epSlug }) {
                   onStreamError={handleStreamError}
                 />
               )}
-                        </>
+            </>
           )}
 
           {/* Embedded player — disabled */}
-           {currentEp && sourceMode === "embedded" && (
+          {/* {currentEp && sourceMode === "embedded" && (
             <>
               {!embedUrl && (
                 <div className={styles.playerState}><span>📡</span><p>Select a source below.</p></div>
               )}
               {embedUrl && (
-  <div className={styles.playerState}>
-    <span>🎬</span>
-    <p>{anime?.name || "Anime"} — Episode {epNumber}</p>
-    <a
-      href={embedUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        marginTop: "16px",
-        display: "inline-block",
-        backgroundColor: "#e8417a",
-        color: "#fff",
-        padding: "12px 28px",
-        borderRadius: "8px",
-        fontWeight: 700,
-        textDecoration: "none",
-        fontSize: "15px",
-      }}
-    >
-      Watch on MegaPlay →
-    </a>
-  </div>
-)}
-
+                <iframe
+                  key={`${embedProvider}-${embedUrl}-${embedReload}`}
+                  src={embedUrl}
+                  className={styles.iframe}
+                  frameBorder="0"
+                  scrolling="no"
+                  allowFullScreen
+                  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                  title={`${anime?.name || "Anime"} Episode ${epNumber}`}
+                />
+              )}
             </>
-          )}
+          )} */}
         </div>
 
         {/* ── Control panel ─────────────────────────────────────────────── */}
@@ -610,16 +551,17 @@ export default function WatchClient({ animeId, epSlug }) {
                 Stream
                 {activeSrcId && crySelSrc && <span className={styles.activeIndicator} />}
               </button>
+              {/* Embedded tab — disabled
               <button
                 className={`${styles.modeTab} ${sourceMode === "embedded" ? styles.modeTabActive : ""}`}
                 onClick={() => setSourceMode("embedded")}
-                >
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-  </svg>
-  MegaPlay
-</button>
-
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+                </svg>
+                Embedded
+              </button>
+              */}
             </div>
             <button className={styles.reloadBtn} onClick={() => fetchStream()}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -750,7 +692,7 @@ export default function WatchClient({ animeId, epSlug }) {
           )}
 
           {/* Embedded control panel — disabled */}
-          {sourceMode === "embedded" && (
+          {/* {sourceMode === "embedded" && (
             <div className={styles.cryBody}>
               <div className={styles.ctrlRow}>
                 <span className={styles.ctrlLabel}>Provider</span>
@@ -786,7 +728,7 @@ export default function WatchClient({ animeId, epSlug }) {
                 </div>
               </div>
             </div>
-          )} 
+          )} */}
         </div>
 
         {/* Episode nav with prefetch on hover */}
