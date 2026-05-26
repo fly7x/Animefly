@@ -390,8 +390,10 @@ export default function WatchClient({ animeId, epSlug }) {
 
   // ── Embedded ──────────────────────────────────────────────────────────────
   const embedCtx = currentEp ? {
-    tmdbId, season: 1, episode: epNumber, type: "tv", lang: embedLang,
-  } : null;
+  tmdbId, season: 1, episode: epNumber, type: "tv", lang: embedLang,
+  anikotoEmbedSub: anikotoEmbs.sub,
+  anikotoEmbedDub: anikotoEmbs.dub,
+ } : null;
   const embedUrl     = embedCtx ? buildEmbedUrl(embedProvider, embedCtx) : null;
   const availEmbed   = embedCtx ? PROVIDERS.filter(p => buildEmbedUrl(p.id, embedCtx) !== null).map(p => p.id) : [];
   const visibleEmbed = showMoreEmbed ? PROVIDERS : PRIMARY_EMBED;
