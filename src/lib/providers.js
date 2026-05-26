@@ -19,6 +19,23 @@
 export const PROVIDERS = [
   // ── Primary providers (TMDB-based, most reliable) ───────────────────────
 {
+  id:   "megaplay_sub",
+  name: "MegaPlay (Sub)",
+  getUrl({ anilistId, episode }) {
+    if (!anilistId) return null;
+    return `https://megaplay.buzz/stream/ani/${anilistId}/${episode}/sub`;
+  },
+},
+{
+  id:   "megaplay_dub",
+  name: "MegaPlay (Dub)",
+  getUrl({ anilistId, episode }) {
+    if (!anilistId) return null;
+    return `https://megaplay.buzz/stream/ani/${anilistId}/${episode}/dub`;
+  },
+},
+
+{
   id:   "anikoto_sub",
   name: "AniKoto (Sub)",
   getUrl({ anikotoEmbedSub }) {
