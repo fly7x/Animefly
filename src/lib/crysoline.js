@@ -119,21 +119,8 @@ export const CRYSOLINE_SOURCES = [
   // ── ACTIVE SOURCES ────────────────────────────────────────────────────────
   { id: "animegg",       name: "AnimeGG",       site: "animegg.org",           langs: ["en","ja"], hasServers: false, isDefault: true },
   { id: "animepahe",     name: "AnimePahe",     site: "animepahe.si",          langs: ["en","ja"], hasServers: false },
-  { id: "animekai",      name: "AnimeKai",      site: "anikai.to",             langs: ["en","ja"], hasServers: false },
-  { id: "kickassanime",  name: "KickAssAnime",  site: "kaa.it",                langs: ["en","ja"], hasServers: false },
   { id: "animeparadise", name: "AnimeParadise", site: "animeparadise.moe",     langs: ["en","ja"], hasServers: false },
   { id: "anizone",       name: "Anizone",       site: "anizone.to",            langs: ["en","ja"], hasServers: false },
-  { id: "animeheaven",   name: "AnimeHeaven",   site: "animeheaven.me",        langs: ["en","ja"], hasServers: false },
-  { id: "animeyy",       name: "AnimeYY",       site: "animeyy.com",           langs: ["en","ja"], hasServers: false },
-  { id: "animenexus",    name: "AnimeNexus",    site: "anime.nexus",           langs: ["en","ja"], hasServers: false },
-  { id: "uniquestream",  name: "UniqueStream",  site: "anime.uniquestream.net",langs: ["en","ja"], hasServers: false },
-  { id: "animerevival",  name: "AnimeRevival",  site: "animerevival.xyz",      langs: ["en","ja"], hasServers: false },
-  { id: "anicore",       name: "Anicore",       site: "anikage.cc",            langs: ["en","ja"], hasServers: true  },
-  { id: "anidap",        name: "Anidap",        site: "anidap.se",             langs: ["en","ja"], hasServers: true  },
-  { id: "animex",        name: "Animex",        site: "animex.one",            langs: ["en","ja"], hasServers: true  },
-  { id: "animemeow",     name: "AnimeMeow",     site: "animemeow.xyz",         langs: ["en","ja"], hasServers: true  },
-  { id: "animenix",      name: "AnimeNix",      site: "animenix.com",          langs: ["en","ja"], hasServers: true  },
-  { id: "kuudere",       name: "Kuudere",       site: "kuudere.ru",            langs: ["en","ja"], hasServers: false },
 ];
 
 export const DEFAULT_SOURCE_ID = "animegg";
@@ -150,21 +137,21 @@ export const ALL_SOURCE_IDS = CRYSOLINE_SOURCES.map(s => s.id);
 // Only active sources are listed here — inactive ones are commented out.
 export const FALLBACK_SOURCE_IDS = [
   "animepahe",
-  "animekai",
-  "kickassanime",
+  //"animekai",
+  //"kickassanime",
   "animeparadise",
   "anizone",
-  "animeheaven",
-  "animeyy",
-  "animenexus",
-  "uniquestream",
-  "animerevival",
-  "anicore",
-  "anidap",
-  "animex",
-  "animemeow",
-  "animenix",
-  "kuudere",
+  //"animeheaven",
+  //"animeyy",
+  //"animenexus",
+  //"uniquestream",
+  //"animerevival",
+  //"anicore",
+  //"anidap",
+  //"animex",
+  //"animemeow",
+  //"animenix",
+  //"kuudere",
 ];
 
 
