@@ -18,6 +18,21 @@
 
 export const PROVIDERS = [
   // ── Primary providers (TMDB-based, most reliable) ───────────────────────
+{
+  id:   "anikoto_sub",
+  name: "AniKoto (Sub)",
+  getUrl({ anikotoEmbedSub }) {
+    return anikotoEmbedSub || null;
+  },
+},
+{
+  id:   "anikoto_dub",
+  name: "AniKoto (Dub)",
+  getUrl({ anikotoEmbedDub }) {
+    return anikotoEmbedDub || null;
+  },
+},
+
   {
     id:   "autoembed",
     name: "AutoEmbed",
