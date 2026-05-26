@@ -439,10 +439,9 @@ export default function WatchClient({ animeId, epSlug }) {
       }
     }
 
-    fetchAnikoto();
-  }, [anime?.name, epNumber]);
+        fetchAnikoto();
+  }, [anime?.name, epNumber]);   // ← closes useEffect
 
-  const sidebarSections = [
 
 
   const sidebarSections = [
