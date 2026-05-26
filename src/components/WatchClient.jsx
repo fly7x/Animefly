@@ -109,6 +109,9 @@ export default function WatchClient({ animeId, epSlug }) {
 
   // ── Mode ──────────────────────────────────────────────────────────────────
   const [sourceMode, setSourceMode] = useState("crysoline");
+  const [anikotoId,   setAnikotoId]   = useState(null);
+  const [anikotoEmbs, setAnikotoEmbs] = useState({ sub: null, dub: null });
+
 
   // ── Source state ──────────────────────────────────────────────────────────
   const [sourceMap,     setSourceMap]     = useState({});
