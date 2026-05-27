@@ -238,7 +238,7 @@ export default function Navbar() {
               ))}
               {user
                 ? <Link href="/profile" className={styles.mobileLink}>Profile</Link>
-                : <button className={`${styles.mobileLink} ${styles.mobileLoginBtn}`} onClick={login}>Sign in with AniList</button>
+                : <a href="/login" className={`${styles.mobileLink} ${styles.mobileLoginBtn}`}>Login</a>
               }
             </div>
           </motion.div>
