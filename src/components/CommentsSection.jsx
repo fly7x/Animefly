@@ -1,286 +1,150 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
-import styles from "./CommentsSection.module.css";
+import { useState, useEffect, useCallback } from "react";
 
-/**
- * CommentsSection
- *
- * Strategy (most-to-least reliable):
- *  1. TheAnimeCommunity embed  — appended into a stable div BEFORE the script loads
- *  2. Disqus embed             — fallback if TAC fails or DISQUS shortname is set
- *  3. Error state              — retry button
- *
- * Root cause of the original bug:
- *  The script was appended INSIDE the `containerRef` div (which was also the
- *  target element with id="anime-community-comment-section"). The TAC script
- *  looks for that id on load — but since the script *is inside* the element,
- *  some browsers parse the DOM in a way that confuses the embed. Fix: keep the
- *  target div clean; append the script to <body> instead.
- */
+export default function CommentsSection({ animeId, episodeId }) {
+  const [comments, setComments]   = useState([]);
+  const [user, setUser]           = useState(null);
+  const [content, setContent]     = useState("");
+  const [isSpoiler, setIsSpoiler] = useState(false);
+  const [loading, setLoading]     = useState(true);
+  const [posting, setPosting]     = useState(false);
+  const [error, setError]         = useState("");
 
-const TAC_SCRIPT_ID   = "tac-embed-script";
-const DISQUS_SCRIPT_ID = "dsq-embed-scr";
+  const epId = episodeId || "0";
 
-function buildTACConfig(anilistId, malId, epNumber) {
-  const cfg = {
-    episodeChapterNumber: String(epNumber ?? 1),
-    mediaType: "anime",
-    colorScheme: {
-      backgroundColor:    "#0d0f17",
-      primaryColor:       "#6c6ef7",
-      strongTextColor:    "#edeef5",
-      primaryTextColor:   "#edeef5",
-      secondaryTextColor: "#8a92a8",
-      dropDownTextColor:  "#edeef5",
-      iconColor:          "#8a92a8",
-      accentColor:        "rgba(108,110,247,0.35)",
-    },
-    removeBorderStyling: true,
-  };
-  if (anilistId) cfg.AniList_ID = String(anilistId);
-  if (malId)     cfg.MAL_ID     = String(malId);
-  return cfg;
-}
+  const fetchComments = useCallback(async () => {
+    setLoading(true);
+    const res  = await fetch(`/api/comments?anime_id=${animeId}&episode_id=${epId}`);
+    const data = await res.json();
+    setComments(data.comments || []);
+    setLoading(false);
+  }, [animeId, epId]);
 
-export default function CommentsSection({
-  animeId,
-  animeName,
-  epSlug,
-  epNumber,
-  malId,
-  anilistId,
-}) {
-  const [enabled,  setEnabled]  = useState(false);
-  const [status,   setStatus]   = useState("idle"); // idle | loading | loaded | error
-  const [provider, setProvider] = useState("tac");  // tac | disqus
-
-  // The TAC embed target — must be a stable, clean div (no script children)
-  const tacRef    = useRef(null);
-  // We track whether a script is already injected to avoid duplicates
-  const injected  = useRef(false);
-
-  // Resolved AniList numeric id from slug like "one-piece-100"
-  const resolvedAnilistId = anilistId
-    || (animeId ? animeId.match(/-(\d+)$/)?.[1] : null);
-
-  // Reset when the episode changes
   useEffect(() => {
-    setEnabled(false);
-    setStatus("idle");
-    injected.current = false;
+    fetchComments();
+    fetch("/api/auth/me").then(r => r.json()).then(d => setUser(d.user || null));
+  }, [fetchComments]);
 
-    // Clean up any previously injected TAC script
-    document.getElementById(TAC_SCRIPT_ID)?.remove();
-    delete window.theAnimeCommunityConfig;
-  }, [animeId, epSlug]);
-
-  /* ─────────────────────────────────────────────────────────
-     TAC loader
-     Key fix: append script to document.body, NOT inside the
-     target div. The embed script then finds the div by its id.
-  ───────────────────────────────────────────────────────── */
-  const loadTAC = useCallback(() => {
-    if (injected.current) return;
-    injected.current = true;
-    setStatus("loading");
-
-    window.theAnimeCommunityConfig = buildTACConfig(
-      resolvedAnilistId, malId, epNumber
-    );
-
-    const script    = document.createElement("script");
-    script.id       = TAC_SCRIPT_ID;
-    script.src      = "https://theanimecommunity.com/embed.js";
-    script.async    = true;
-
-    script.onload = () => setStatus("loaded");
-    script.onerror = () => {
-      // TAC failed → automatically try Disqus if configured
-      injected.current = false;
-      const shortname = process.env.NEXT_PUBLIC_DISQUS_SHORTNAME;
-      if (shortname) {
-        setProvider("disqus");
-        loadDisqus(shortname);
-      } else {
-        setStatus("error");
-      }
-    };
-
-    // ✅ Append to body — not inside the target div
-    document.body.appendChild(script);
-  }, [resolvedAnilistId, malId, epNumber]);
-
-  /* ─────────────────────────────────────────────────────────
-     Disqus fallback loader
-  ───────────────────────────────────────────────────────── */
-  const loadDisqus = useCallback((shortname) => {
-    if (!shortname) { setStatus("error"); return; }
-    setStatus("loading");
-
-    window.disqus_config = function () {
-      this.page.url        = window.location.href;
-      this.page.identifier = `${animeId}-${epSlug}`;
-      this.page.title      = animeName
-        ? `${animeName} Episode ${epNumber}`
-        : `Episode ${epNumber}`;
-    };
-
-    // Remove old Disqus script if present
-    document.getElementById(DISQUS_SCRIPT_ID)?.remove();
-
-    const script  = document.createElement("script");
-    script.id     = DISQUS_SCRIPT_ID;
-    script.src    = `https://${shortname}.disqus.com/embed.js`;
-    script.async  = true;
-    script.setAttribute("data-timestamp", Date.now());
-
-    script.onload  = () => setStatus("loaded");
-    script.onerror = () => setStatus("error");
-
-    document.body.appendChild(script);
-  }, [animeId, epSlug, animeName, epNumber]);
-
-  /* ─────────────────────────────────────────────────────────
-     Master load handler — called when user clicks the button
-  ───────────────────────────────────────────────────────── */
-  function handleLoad() {
-    setEnabled(true);
-    const disqusShortname = process.env.NEXT_PUBLIC_DISQUS_SHORTNAME;
-
-    // If only Disqus is configured (no TAC), go straight there
-    if (!resolvedAnilistId && !malId && disqusShortname) {
-      setProvider("disqus");
-      loadDisqus(disqusShortname);
-    } else {
-      setProvider("tac");
-      loadTAC();
-    }
+  async function postComment(e) {
+    e.preventDefault();
+    if (!content.trim()) return;
+    setPosting(true); setError("");
+    const res  = await fetch("/api/comments", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ anime_id: animeId, episode_id: epId, content, is_spoiler: isSpoiler }),
+    });
+    const data = await res.json();
+    setPosting(false);
+    if (data.error) { setError(data.error); return; }
+    setContent(""); setIsSpoiler(false); fetchComments();
   }
 
-  function handleRetry() {
-    injected.current = false;
-    document.getElementById(TAC_SCRIPT_ID)?.remove();
-    document.getElementById(DISQUS_SCRIPT_ID)?.remove();
-    delete window.theAnimeCommunityConfig;
-    setStatus("loading");
-
-    if (provider === "disqus") {
-      loadDisqus(process.env.NEXT_PUBLIC_DISQUS_SHORTNAME);
-    } else {
-      loadTAC();
-    }
+  async function deleteComment(id) {
+    await fetch(`/api/comments?id=${id}`, { method: "DELETE" });
+    fetchComments();
   }
+
+  function formatDate(str) {
+    return new Date(str).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  function initials(name) { return name?.charAt(0)?.toUpperCase() || "?"; }
 
   return (
-    <section className={styles.section} aria-label="Episode comments">
-      {/* ── Header ─────────────────────────────────────────── */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <span className={styles.icon} aria-hidden="true">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-          </span>
-          <h2 className={styles.title}>Discussion</h2>
-          {epNumber && (
-            <span className={styles.epBadge}>Episode {epNumber}</span>
-          )}
-        </div>
-        {enabled && status === "loaded" && (
-          <span className={styles.poweredBy}>
-            via&nbsp;
-            <a
-              href={provider === "tac" ? "https://theanimecommunity.com" : "https://disqus.com"}
-              target="_blank" rel="noreferrer noopener"
-              className={styles.poweredLink}>
-              {provider === "tac" ? "TheAnimeCommunity" : "Disqus"}
-            </a>
-          </span>
-        )}
-      </div>
+    <div style={s.wrap}>
+      <h3 style={s.heading}>
+        Comments{comments.length > 0 && <span style={s.count}>{comments.length}</span>}
+      </h3>
 
-      {/* ── Not yet enabled — show load prompt ─────────────── */}
-      {!enabled ? (
-        <div className={styles.prompt}>
-          <div className={styles.promptGlow} aria-hidden="true" />
-          <div className={styles.promptIcon} aria-hidden="true">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1.5">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              <path d="M8 10h8M8 14h5" strokeLinecap="round"/>
-            </svg>
+      {user ? (
+        <form onSubmit={postComment} style={s.form}>
+          <div style={s.formTop}>
+            {user.image
+              ? <img src={user.image} alt={user.username} style={s.avatarImg} />
+              : <div style={s.avatar}>{initials(user.username)}</div>}
+            <textarea style={s.textarea} placeholder={`Comment as ${user.username}...`}
+              value={content} onChange={e => setContent(e.target.value)} rows={3} required />
           </div>
-          <p className={styles.promptText}>
-            Join the discussion{animeName ? ` for ${animeName}` : ""}
-          </p>
-          <p className={styles.promptSub}>
-            Share your thoughts, reactions &amp; theories for Episode {epNumber}
-          </p>
-          <button
-            className={styles.loadBtn}
-            onClick={handleLoad}
-            aria-label="Load comments section"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            Load Comments
-          </button>
-        </div>
+          <div style={s.formBottom}>
+            <label style={s.spoilerLabel}>
+              <input type="checkbox" checked={isSpoiler} onChange={e => setIsSpoiler(e.target.checked)} />
+              {" "}Spoiler
+            </label>
+            {error && <span style={s.errText}>{error}</span>}
+            <button style={s.postBtn} type="submit" disabled={posting}>
+              {posting ? "Posting..." : "Post Comment"}
+            </button>
+          </div>
+        </form>
       ) : (
-        <div className={styles.embedWrap}>
-          {/* Loading spinner */}
-          {status === "loading" && (
-            <div className={styles.loading} role="status" aria-live="polite">
-              <div className={styles.loadingDots} aria-hidden="true">
-                <span /><span /><span />
-              </div>
-              <span>Loading comments…</span>
-            </div>
-          )}
-
-          {/* Error state */}
-          {status === "error" && (
-            <div className={styles.errorState} role="alert">
-              <span className={styles.errorIcon} aria-hidden="true">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M12 8v4M12 16h.01" strokeLinecap="round"/>
-                </svg>
-              </span>
-              <p>Could not load the comment section.</p>
-              <p className={styles.errorSub}>
-                The comment provider may be temporarily unavailable.
-              </p>
-              <button className={styles.retryBtn} onClick={handleRetry}>
-                Try again
-              </button>
-            </div>
-          )}
-
-          {/* ✅ TAC target div — must be clean, no script children */}
-          {provider === "tac" && (
-            <div
-              id="anime-community-comment-section"
-              ref={tacRef}
-              className={`${styles.embed} ${status === "loaded" ? styles.embedVisible : ""}`}
-              aria-label="Comments"
-            />
-          )}
-
-          {/* Disqus target div */}
-          {provider === "disqus" && (
-            <div
-              id="disqus_thread"
-              className={`${styles.embed} ${status === "loaded" ? styles.embedVisible : ""}`}
-              aria-label="Disqus comments"
-            />
-          )}
+        <div style={s.loginPrompt}>
+          <a href="/login" style={s.loginLink}>Log in</a> to leave a comment
         </div>
       )}
-    </section>
+
+      {loading ? (
+        <p style={s.empty}>Loading comments...</p>
+      ) : comments.length === 0 ? (
+        <div style={s.emptyWrap}>
+          <p style={s.emptyTitle}>No comments yet.</p>
+          <p style={s.emptySub}>Be the first to comment!</p>
+        </div>
+      ) : (
+        <div style={s.list}>
+          {comments.map(c => (
+            <div key={c.id} style={s.comment}>
+              <div style={s.commentHeader}>
+                {c.user_avatar
+                  ? <img src={c.user_avatar} alt={c.username} style={s.avatarImg} />
+                  : <div style={s.avatar}>{initials(c.username)}</div>}
+                <div>
+                  <span style={s.username}>{c.username}</span>
+                  <span style={s.date}>{formatDate(c.created_at)}</span>
+                </div>
+                {user?.id === c.user_id && (
+                  <button style={s.deleteBtn} onClick={() => deleteComment(c.id)}>Delete</button>
+                )}
+              </div>
+              {c.is_spoiler ? <SpoilerText text={c.content} /> : <p style={s.content}>{c.content}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
+
+function SpoilerText({ text }) {
+  const [reveal, setReveal] = useState(false);
+  return reveal
+    ? <p style={{ color: "#c0c0c8", fontSize: "14px", lineHeight: 1.6, margin: 0, cursor: "pointer" }} onClick={() => setReveal(false)}>{text}</p>
+    : <p style={{ backgroundColor: "rgba(232,65,122,0.1)", color: "#e8417a", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", userSelect: "none" }} onClick={() => setReveal(true)}>⚠ Spoiler — click to reveal</p>;
+}
+
+const s = {
+  wrap: { padding: "24px 0", fontFamily: "Inter,sans-serif" },
+  heading: { color: "#fff", fontSize: "18px", fontWeight: 700, marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" },
+  count: { backgroundColor: "rgba(232,65,122,0.15)", color: "#e8417a", borderRadius: "20px", padding: "2px 10px", fontSize: "13px" },
+  form: { backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "16px", marginBottom: "24px" },
+  formTop: { display: "flex", gap: "12px", alignItems: "flex-start" },
+  formBottom: { display: "flex", alignItems: "center", gap: "12px", marginTop: "12px", justifyContent: "flex-end" },
+  avatar: { width: "36px", height: "36px", borderRadius: "50%", backgroundColor: "#e8417a", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "14px", flexShrink: 0 },
+  avatarImg: { width: "36px", height: "36px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 },
+  textarea: { flex: 1, backgroundColor: "#0e0e12", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px 12px", color: "#fff", fontSize: "14px", resize: "vertical", fontFamily: "Inter,sans-serif", outline: "none" },
+  spoilerLabel: { color: "#a0a0b0", fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" },
+  postBtn: { backgroundColor: "#e8417a", color: "#fff", border: "none", borderRadius: "8px", padding: "8px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "Inter,sans-serif" },
+  loginPrompt: { color: "#a0a0b0", fontSize: "14px", backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "10px", padding: "16px", marginBottom: "24px", textAlign: "center" },
+  loginLink: { color: "#e8417a", textDecoration: "none", fontWeight: 600 },
+  empty: { color: "#606070", fontSize: "14px" },
+  emptyWrap: { textAlign: "center", padding: "40px 0" },
+  emptyTitle: { color: "#a0a0b0", fontSize: "16px", fontWeight: 600, margin: "0 0 6px" },
+  emptySub: { color: "#606070", fontSize: "14px", margin: 0 },
+  list: { display: "flex", flexDirection: "column", gap: "16px" },
+  comment: { backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "16px" },
+  commentHeader: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" },
+  username: { color: "#fff", fontWeight: 600, fontSize: "14px", display: "block" },
+  date: { color: "#606070", fontSize: "12px" },
+  deleteBtn: { marginLeft: "auto", backgroundColor: "transparent", border: "none", color: "#606070", fontSize: "12px", cursor: "pointer" },
+  content: { color: "#c0c0c8", fontSize: "14px", lineHeight: 1.6, margin: 0 },
+  errText: { color: "#e8417a", fontSize: "12px" },
+};
