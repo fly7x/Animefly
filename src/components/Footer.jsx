@@ -133,6 +133,10 @@ export default function Footer() {
             <span className={styles.linkChevron}>›</span>AniList
           </a>
         </div>
+        
+      {/* Latest Comments */}
+        <LatestComments />
+
       </div>
 
       {/* Bottom */}
