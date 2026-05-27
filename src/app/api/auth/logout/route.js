@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
+import { getDb } from "@/lib/db";
+
 export const dynamic = "force-dynamic";
 
-export function GET(request) {
-  const response = NextResponse.redirect(new URL("/", request.url));
-  response.cookies.delete("al_token");
-  response.cookies.delete("al_user");
-  return response;
-}
-
-// Also allow POST for programmatic calls
-export function POST() {
-  const response = NextResponse.json({ ok: true });
-  response.cookies.delete("al_token");
-  response.cookies.delete("al_user");
+export async function POST(request) {
+  const token = request.cookies.get("fa_session")?.value;
+  if (token) {
+    const db = getDb();
+    await db.execute({ sql: "DELETE FROM sessions WHERE token = ?", args: [token] });
+  }
+  const response = NextResponse.json({ success: true });
+  response.cookies.delete("fa_session");
   return response;
 }
