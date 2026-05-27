@@ -167,23 +167,34 @@ export default function Navbar() {
           </div>
 
           {/* Auth */}
-          {user ? (
-            <Link href="/profile" className={styles.avatarBtn} title={user.name}>
-              {user.avatar?.large
-                ? <img src={user.avatar.large} alt={user.name} className={styles.avatarImg} />
-                : <span className={styles.avatarInitial}>{user.name?.[0]?.toUpperCase()}</span>
-              }
-            </Link>
-          ) : (
-            <motion.button
-              className={styles.loginBtn}
-              onClick={login}
-              whileHover={{ scale: 1.04, y: -1 }}
-              whileTap={{ scale: 0.97 }}
-            >
-              Enter
-            </motion.button>
-          )}
+{user ? (
+  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+    <Link href="/profile" className={styles.avatarBtn} title={user.username}>
+      {user.image
+        ? <img src={user.image} alt={user.username} className={styles.avatarImg} />
+        : <span className={styles.avatarInitial}>{user.username?.[0]?.toUpperCase()}</span>
+      }
+    </Link>
+    <motion.button
+      className={styles.loginBtn}
+      onClick={logout}
+      whileHover={{ scale: 1.04, y: -1 }}
+      whileTap={{ scale: 0.97 }}
+    >
+      Logout
+    </motion.button>
+  </div>
+) : (
+  <motion.a
+    href="/login"
+    className={styles.loginBtn}
+    whileHover={{ scale: 1.04, y: -1 }}
+    whileTap={{ scale: 0.97 }}
+  >
+    Login
+  </motion.a>
+)}
+
 
           {/* Burger */}
           <button className={styles.burger} onClick={() => setMob(!mobileOpen)} aria-label="Menu">
