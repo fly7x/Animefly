@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
 
@@ -7,68 +7,21 @@ export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null);
   const [loading, setLoading] = useState(true);
 
-  /* ── Restore session from cookie-based /api/auth/me ─────────── */
   useEffect(() => {
     fetch("/api/auth/me")
       .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.user) setUser(data.user);
-      })
+      .then(data => { if (data?.user) setUser(data.user); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  /* ── Kick off AniList OAuth (implicit token flow) ────────────── */
-  function login() {
-    // Use Authorization Code flow — redirect to server-side login handler
-    // which builds the correct URL with client_id, redirect_uri, response_type=code
-    window.location.href = "/api/auth/login";
-  }
-
-  /* ── Logout: clear httpOnly cookie + local state ─────────────── */
   async function logout() {
-    try { await fetch("/api/auth/logout"); } catch {}
+    try { await fetch("/api/auth/logout", { method: "POST" }); } catch {}
     setUser(null);
   }
 
-  /* ── Called from callback page with raw access_token ─────────── */
-  const handleToken = useCallback(async (token) => {
-    if (!token) return;
-    try {
-      // Exchange token for user profile via our own API (keeps token server-side)
-      const res  = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-      const data = await res.json();
-      if (data?.user) setUser(data.user);
-    } catch {
-      // Fallback: hit AniList GraphQL directly
-      try {
-        const { data } = await fetch("https://graphql.anilist.co", {
-          method: "POST",
-          headers: {
-            "Content-Type":  "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            query: `{ Viewer {
-              id name
-              avatar { large medium }
-              statistics { anime { count episodesWatched meanScore } }
-              siteUrl
-            }}`,
-          }),
-        }).then(r => r.json());
-
-        if (data?.Viewer) setUser(data.Viewer);
-      } catch {}
-    }
-  }, []);
-
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, handleToken }}>
+    <AuthContext.Provider value={{ user, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );
