@@ -74,7 +74,7 @@ const nextConfig = {
               "font-src 'self' https://fonts.gstatic.com https://theanimecommunity.com",
               "img-src 'self' data: https: blob:",
               // PROBLEM 1 FIX: blob: is required for hls.js MSE; 'self' covers /api/proxy
-              "media-src 'self' blob: data: https://flyanime-proxy.moode6019.workers.dev;"
+              "media-src 'self' blob: data: https://flyanime-proxy.moode6019.workers.dev;";
               `frame-src ${frameHosts}`,
               `connect-src ${connectSrc}`,
               // PROBLEM 3 FIX: worker-src for hls.js web worker
