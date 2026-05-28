@@ -1,242 +1,115 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  saveMediaListEntry,
-  deleteMediaListEntry,
-  getMediaListEntry,
-  LIST_STATUS,
-  STATUS_LABELS,
-} from "@/lib/anilistClient";
-import styles from "./AniListPanel.module.css";
+import { useState, useEffect } from "react";
 
-/* ── Star rating (1–10 half-star) ─────────────────────────────────── */
-function StarRating({ score, onChange, disabled }) {
-  const [hover, setHover] = useState(0);
-  // score is 0-100; display as 0-10 with 0.5 steps
-  const display = score ? score / 10 : 0;
-  const hoverDisplay = hover / 10;
+const STATUS_OPTIONS = [
+  { key: "watching",   label: "Watching",     icon: "▶" },
+  { key: "planning",   label: "Plan to Watch", icon: "📋" },
+  { key: "completed",  label: "Completed",    icon: "✓" },
+  { key: "on_hold",    label: "On Hold",      icon: "⏸" },
+  { key: "dropped",    label: "Dropped",      icon: "✕" },
+];
 
-  return (
-    <div className={styles.stars} aria-label="Rating">
-      {Array.from({ length: 10 }, (_, i) => {
-        const val = i + 1; // 1-10
-        const filled = (hoverDisplay || display) >= val;
-        return (
-          <button
-            key={val}
-            className={`${styles.star} ${filled ? styles.starFilled : ""}`}
-            onMouseEnter={() => !disabled && setHover(val * 10)}
-            onMouseLeave={() => !disabled && setHover(0)}
-            onClick={() => !disabled && onChange(val === display ? 0 : val * 10)}
-            aria-label={`Rate ${val}`}
-            type="button"
-          >★</button>
-        );
-      })}
-      {display > 0 && (
-        <span className={styles.scoreNum}>{display.toFixed(0)}/10</span>
-      )}
-    </div>
-  );
-}
+export default function AniListPanel({ anilistId, animeId, animeName, poster, compact = false }) {
+  const [status,  setStatus]  = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [open,    setOpen]    = useState(false);
+  const [user,    setUser]    = useState(null);
 
-/* ── Main panel ────────────────────────────────────────────────────── */
-export default function AniListPanel({
-  anilistId,       // number — the AniList media ID
-  epNumber,        // current episode number (optional, from watch page)
-  totalEpisodes,   // total episodes (optional)
-  compact = false, // compact mode for info page sidebar
-}) {
-  const [entry,    setEntry]    = useState(null);   // current list entry
-  const [loading,  setLoading]  = useState(true);
-  const [saving,   setSaving]   = useState(false);
-  const [error,    setError]    = useState(null);
-  const [success,  setSuccess]  = useState(null);
-  const [open,     setOpen]     = useState(false);
-  const [authed,   setAuthed]   = useState(true);   // false = not logged in
+  const id = animeId || String(anilistId);
 
-  // Fetch current entry
-  const load = useCallback(async () => {
-    if (!anilistId) { setLoading(false); return; }
-    try {
-      const e = await getMediaListEntry(anilistId);
-      setEntry(e);
-    } catch (e) {
-      if (e.message === "NOT_AUTHENTICATED") setAuthed(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [anilistId]);
+  useEffect(() => {
+    fetch("/api/auth/me").then(r => r.json()).then(d => setUser(d.user || null));
+    if (!id) { setLoading(false); return; }
+    fetch(`/api/watchlist`)
+      .then(r => r.json())
+      .then(d => {
+        const entry = (d.watchlist || []).find(w => w.anime_id === id);
+        if (entry) setStatus(entry.type || "watching");
+        setLoading(false);
+      });
+  }, [id]);
 
-  useEffect(() => { load(); }, [load]);
-
-  async function save(patch) {
-    setSaving(true); setError(null); setSuccess(null);
-    try {
-      await saveMediaListEntry({ mediaId: anilistId, ...patch });
-      setSuccess("Pact sealed ✓");
-      setTimeout(() => setSuccess(null), 2500);
-      // Reload entry
-      const updated = await getMediaListEntry(anilistId);
-      setEntry(updated);
-    } catch (e) {
-      if (e.message === "NOT_AUTHENTICATED") setAuthed(false);
-      else setError(e.message);
-    } finally {
-      setSaving(false);
-    }
+  async function save(type) {
+    if (!user) { window.location.href = "/login"; return; }
+    setSaving(true);
+    await fetch("/api/watchlist", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ anime_id: id, anime_name: animeName, poster, type }),
+    });
+    setStatus(type); setSaving(false); setOpen(false);
   }
 
   async function remove() {
-    if (!entry?.id || !confirm("Release this soul from your collection?")) return;
     setSaving(true);
-    try {
-      await deleteMediaListEntry(entry.id);
-      setEntry(null);
-      setSuccess("Soul released");
-      setTimeout(() => setSuccess(null), 2500);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setSaving(false);
-    }
+    await fetch(`/api/watchlist?anime_id=${id}`, { method: "DELETE" });
+    setStatus(null); setSaving(false); setOpen(false);
   }
 
-  // Sync episode progress from watch page
-  function syncProgress() {
-    if (!epNumber) return;
-    save({ status: "CURRENT", progress: epNumber });
-  }
+  if (!id) return null;
 
-  if (!authed) {
-    return (
-      <div className={`${styles.panel} ${compact ? styles.compact : ""}`}>
-        <div className={styles.notAuthed}>
-          <span className={styles.lockIcon}>🔐</span>
-          <p>Sign in with AniList to track this anime</p>
-          <a href="/api/auth/login" className={styles.signInBtn}>Sign in</a>
-        </div>
-      </div>
-    );
-  }
-
-  if (!anilistId) return null;
-
-  const currentStatus  = entry?.status || null;
-  const currentScore   = entry?.score  || 0;
-  const currentProg    = entry?.progress || 0;
-
-  const statusIcon = {
-    CURRENT:   "▶",
-    PLANNING:  "📋",
-    COMPLETED: "✓",
-    DROPPED:   "✕",
-    PAUSED:    "⏸",
-    REPEATING: "↺",
-  };
+  const current = STATUS_OPTIONS.find(s => s.key === status);
 
   return (
-    <div className={`${styles.panel} ${compact ? styles.compact : ""}`}>
-      {/* Header button */}
-      <motion.button
-        className={`${styles.triggerBtn} ${currentStatus ? styles.triggerBtnActive : ""}`}
+    <div style={{ position: "relative", fontFamily: "Inter,sans-serif" }}>
+      <button
         onClick={() => setOpen(v => !v)}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.97 }}
-        disabled={loading}
+        disabled={loading || saving}
+        style={{
+          display: "flex", alignItems: "center", gap: "8px",
+          backgroundColor: status ? "#e8417a" : "rgba(232,65,122,0.12)",
+          border: "1px solid rgba(232,65,122,0.3)",
+          color: status ? "#fff" : "#e8417a",
+          borderRadius: "8px", padding: "9px 14px",
+          fontSize: "13px", fontWeight: 600, cursor: "pointer",
+          fontFamily: "Inter,sans-serif", width: "100%",
+        }}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/>
-        </svg>
-        {loading ? "Loading…" : currentStatus
-          ? `${statusIcon[currentStatus]} ${STATUS_LABELS[currentStatus]}`
-          : "+ Bind to AniList"}
+        {loading ? "Loading..." : current
+          ? `${current.icon} ${current.label}`
+          : "+ Add to Watchlist"}
         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"
-          style={{ marginLeft: "auto", opacity: 0.5, transform: open ? "rotate(180deg)" : "", transition: "transform .2s" }}>
+          style={{ marginLeft: "auto", opacity: 0.6, transform: open ? "rotate(180deg)" : "", transition: "transform .2s" }}>
           <path d="M7 10l5 5 5-5z"/>
         </svg>
-      </motion.button>
+      </button>
 
-      {/* Expanded panel */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className={styles.dropdown}
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.97 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
-            {/* Status buttons */}
-            <div className={styles.section}>
-              <p className={styles.sectionLabel}>Status</p>
-              <div className={styles.statusGrid}>
-                {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                  <motion.button
-                    key={key}
-                    className={`${styles.statusBtn} ${currentStatus === key ? styles.statusBtnActive : ""}`}
-                    onClick={() => save({ status: key })}
-                    disabled={saving}
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
-                  >
-                    {statusIcon[key]} {label}
-                  </motion.button>
-                ))}
-              </div>
-            </div>
-
-            {/* Rating */}
-            <div className={styles.section}>
-              <p className={styles.sectionLabel}>Your Rating</p>
-              <StarRating
-                score={currentScore}
-                onChange={score => save({ score })}
-                disabled={saving}
-              />
-            </div>
-
-            {/* Progress */}
-            <div className={styles.section}>
-              <p className={styles.sectionLabel}>
-                Progress
-                {totalEpisodes ? ` (${currentProg}/${totalEpisodes} eps)` : ` (${currentProg} eps)`}
-              </p>
-              <div className={styles.progressRow}>
-                <button className={styles.progBtn} onClick={() => save({ progress: Math.max(0, currentProg - 1) })} disabled={saving || currentProg === 0}>−</button>
-                <span className={styles.progNum}>{currentProg}</span>
-                <button className={styles.progBtn} onClick={() => save({ progress: currentProg + 1 })} disabled={saving}>+</button>
-                {epNumber && epNumber !== currentProg && (
-                  <motion.button
-                    className={styles.syncBtn}
-                    onClick={syncProgress}
-                    disabled={saving}
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
-                  >
-                    ↑ Sync to Ep {epNumber}
-                  </motion.button>
-                )}
-              </div>
-            </div>
-
-            {/* Feedback */}
-            {(error || success) && (
-              <p className={error ? styles.errorMsg : styles.successMsg}>
-                {error || success}
-              </p>
-            )}
-
-            {/* Remove */}
-            {entry && (
-              <button className={styles.removeBtn} onClick={remove} disabled={saving}>
-                Remove from list
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, zIndex: 50,
+          backgroundColor: "#141418", border: "1px solid rgba(232,65,122,0.2)",
+          borderRadius: "10px", padding: "8px", boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+        }}>
+          {STATUS_OPTIONS.map(opt => (
+            <button key={opt.key} onClick={() => save(opt.key)} disabled={saving}
+              style={{
+                display: "block", width: "100%", textAlign: "left",
+                backgroundColor: status === opt.key ? "rgba(232,65,122,0.15)" : "transparent",
+                border: "none", color: status === opt.key ? "#e8417a" : "#a0a0b0",
+                padding: "9px 12px", borderRadius: "6px", fontSize: "13px",
+                cursor: "pointer", fontFamily: "Inter,sans-serif", fontWeight: 500,
+              }}
+            >
+              {opt.icon} {opt.label}
+            </button>
+          ))}
+          {status && (
+            <>
+              <div style={{ height: "1px", backgroundColor: "rgba(255,255,255,0.06)", margin: "6px 0" }} />
+              <button onClick={remove} disabled={saving}
+                style={{
+                  display: "block", width: "100%", textAlign: "left",
+                  backgroundColor: "transparent", border: "none", color: "#606070",
+                  padding: "9px 12px", borderRadius: "6px", fontSize: "13px",
+                  cursor: "pointer", fontFamily: "Inter,sans-serif",
+                }}
+              >
+                ✕ Remove from list
               </button>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
