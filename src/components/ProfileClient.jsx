@@ -1,7 +1,7 @@
 "use client";
-import ProfileClient from "@/components/ProfileClient";
-export const metadata = { title: "Profile — Fly Anime" };
-export default function ProfilePage() { return <ProfileClient />; }
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const AVATARS = [
   { url: "https://cdn.noitatnemucod.net/avatar/100x100/death_note/File1.jpg",      label: "Light Yagami" },
