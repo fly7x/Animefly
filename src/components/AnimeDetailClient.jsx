@@ -311,7 +311,11 @@ export default function AnimeDetailClient({ animeId, initialData }) {
             {anime?.anilistId && (
               <div style={{ marginBottom: 16 }}>
                 <AniListPanel
-                  anilistId={anime.anilistId}
+  anilistId={anime.anilistId}
+  animeId={anime.id}
+  animeName={anime.name}
+  poster={anime.poster}
+
                   totalEpisodes={anime.episodes?.sub || null}
                   compact
                 />
