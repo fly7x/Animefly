@@ -32,7 +32,7 @@ export default function LatestComments() {
             <div style={s.meta}>
               <span style={s.username}>{c.username}</span>
               <span style={s.dot}>·</span>
-              <span style={s.anime}>{c.anime_id}</span>
+              <span style={s.anime}>{c.anime_name || c.anime_id}</span>
               <span style={s.time}>{timeAgo(c.created_at)}</span>
             </div>
             <p style={s.text}>
