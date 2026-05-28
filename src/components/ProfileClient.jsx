@@ -1,293 +1,280 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
-import { getRecentlyWatched } from "@/lib/watchProgress";
-import { getUserMediaList, getUserStats, STATUS_LABELS } from "@/lib/anilistClient";
-import styles from "./ProfileClient.module.css";
 
-function fmtMins(mins) {
-  const d = Math.floor(mins / 1440);
-  const h = Math.floor((mins % 1440) / 60);
-  if (d > 0) return `${d}d ${h}h`;
-  return `${h}h`;
-}
-
-function StatCard({ label, value, accent }) {
-  return (
-    <motion.div className={styles.statCard} initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} whileHover={{ y:-3 }}>
-      <p className={`${styles.statValue} ${accent ? styles.statValueAccent : ""}`}>{value}</p>
-      <p className={styles.statLabel}>{label}</p>
-    </motion.div>
-  );
-}
-
-function MediaListTab({ status }) {
-  const [entries, setEntries] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-
-  useEffect(() => {
-    setLoading(true);
-    getUserMediaList(status, page)
-      .then(data => {
-        setEntries(prev => page === 1 ? data.mediaList : [...(prev || []), ...data.mediaList]);
-        setHasMore(data.pageInfo?.hasNextPage || false);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [status, page]);
-
-  if (loading && page === 1) return (
-    <div className={styles.listGrid}>
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className={styles.listSkel}>
-          <div className={`skeleton ${styles.listSkelImg}`} />
-          <div style={{ flex:1, display:"flex", flexDirection:"column", gap:8, padding:12 }}>
-            <div className={`skeleton ${styles.listSkelTitle}`} />
-            <div className={`skeleton ${styles.listSkelMeta}`} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  if (!entries?.length) return (
-    <p className={styles.emptyList}>Nothing here yet.</p>
-  );
-
-  return (
-    <>
-      <div className={styles.listGrid}>
-        {entries.map((entry, i) => {
-          const m = entry.media;
-          const title = m.title?.english || m.title?.romaji || "";
-          const pct = m.episodes ? Math.round((entry.progress / m.episodes) * 100) : 0;
-          const nextEp = Math.max(1, (entry.progress || 0) + 1);
-          return (
-            <motion.div key={entry.id} className={styles.listCard}
-              initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }}
-              transition={{ delay: Math.min(i * 0.03, 0.4) }}>
-              <Link href={`/anime/${m.id}`} className={styles.listCardInner}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={m.coverImage?.large} alt={title} className={styles.listImg} loading="lazy" />
-                <div className={styles.listInfo}>
-                  <p className={styles.listTitle}>{title}</p>
-                  <div className={styles.listMeta}>
-                    {m.format && <span className={styles.listFormat}>{m.format}</span>}
-                    {entry.score > 0 && <span className={styles.listScore}>★ {entry.score / 10}</span>}
-                  </div>
-                  <div className={styles.listProgress}>
-                    <div className={styles.progressBar}>
-                      <div className={styles.progressFill} style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className={styles.progressText}>{entry.progress}/{m.episodes || "?"}</span>
-                  </div>
-                  {m.nextAiringEpisode && (
-                    <p className={styles.nextAiring}>
-                      Ep {m.nextAiringEpisode.episode} in {Math.ceil((m.nextAiringEpisode.airingAt * 1000 - Date.now()) / 86400000)}d
-                    </p>
-                  )}
-                </div>
-              </Link>
-              <Link href={`/watch/${m.id}/ep-${nextEp}`} className={styles.watchBtn}>▶</Link>
-            </motion.div>
-          );
-        })}
-      </div>
-      {hasMore && (
-        <button className={styles.loadMore} onClick={() => setPage(p => p + 1)} disabled={loading}>
-          {loading ? "Loading…" : "Summon more"}
-        </button>
-      )}
-    </>
-  );
-}
-
-const TABS = [
-  { key:"CURRENT",  label:"Watching"     },
-  { key:"PLANNING", label:"Plan to Watch"},
-  { key:"COMPLETED",label:"Completed"    },
-  { key:"DROPPED",  label:"Dropped"      },
-  { key:"PAUSED",   label:"On Hold"      },
-  { key:"local",    label:"Unsaved Conquests"},
-  { key:"stats",    label:"Your Dossier"   },
+const AVATARS = [
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/death_note/File1.jpg",      label: "Light Yagami" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/death_note/File2.jpg",      label: "Mikami Teru" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/death_note/File3.jpg",      label: "L Lawliet" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/code_geass/File1.jpg",      label: "Lelouch" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/code_geass/File2.jpg",      label: "C.C." },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/demon_splayer/File15.jpg",  label: "Demon Slayer" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/jujutsu_kaisen/File1.png",  label: "Jujutsu Kaisen" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/chainsaw/01.png",           label: "Chainsaw Man" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/chainsaw/02.png",           label: "Chainsaw Man 2" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/chainsaw/03.png",           label: "Chainsaw Man 3" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/one_piece/user-10.jpeg",    label: "One Piece" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/one_piece/user-11.jpeg",    label: "One Piece 2" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/spy_family/06.png",         label: "Spy x Family" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/spy_family/07.png",         label: "Spy x Family 2" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/spy_family/08.png",         label: "Spy x Family 3" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/zoro_normal/av-zz-01.jpeg", label: "Zoro" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/zoro_normal/av-zz-02.jpeg", label: "Zoro 2" },
+  { url: "https://cdn.noitatnemucod.net/avatar/100x100/zoro_normal/av-zz-03.jpeg", label: "Zoro 3" },
 ];
 
 export default function ProfileClient() {
-  const [user,   setUser]   = useState(null);
-  const [loading,setLoading]= useState(true);
-  const [tab,    setTab]    = useState("CURRENT");
-  const [stats,  setStats]  = useState(null);
-  const [recent, setRecent] = useState([]);
+  const router = useRouter();
+  const [user,    setUser]    = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [tab,     setTab]     = useState("profile");
+  const [showPicker, setShowPicker] = useState(false);
+  const [newUsername,  setNewUsername]  = useState("");
+  const [oldPass,      setOldPass]      = useState("");
+  const [newPass,      setNewPass]      = useState("");
+  const [confirmPass,  setConfirmPass]  = useState("");
+  const [msg,    setMsg]    = useState({ type: "", text: "" });
+  const [saving, setSaving] = useState(false);
+  const [history,   setHistory]   = useState([]);
+  const [watchlist, setWatchlist] = useState([]);
 
   useEffect(() => {
-    setRecent(getRecentlyWatched(20));
-    fetch("/api/auth/me").then(r=>r.json()).then(d=>{setUser(d.user);setLoading(false);}).catch(()=>setLoading(false));
-  }, []);
+    fetch("/api/auth/me").then(r => r.json()).then(d => {
+      if (!d.user) { router.push("/login"); return; }
+      setUser(d.user); setNewUsername(d.user.username); setLoading(false);
+    });
+    fetch("/api/history").then(r => r.json()).then(d => setHistory(d.history || []));
+    fetch("/api/watchlist").then(r => r.json()).then(d => setWatchlist(d.watchlist || []));
+  }, [router]);
 
-  useEffect(() => {
-    if (tab === "stats" && !stats && user) getUserStats().then(setStats).catch(()=>{});
-  }, [tab, stats, user]);
+  async function updateAvatar(url) {
+    const res  = await fetch("/api/auth/profile", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "avatar", image: url }),
+    });
+    const data = await res.json();
+    if (data.success) { setUser(u => ({ ...u, image: url })); setShowPicker(false); }
+  }
 
-  if (loading) return <div className={styles.center}><div className="spinner"/></div>;
+  async function updateUsername(e) {
+    e.preventDefault(); setSaving(true); setMsg({ type: "", text: "" });
+    const res  = await fetch("/api/auth/profile", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "username", username: newUsername }),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (data.error) { setMsg({ type: "error", text: data.error }); return; }
+    setUser(u => ({ ...u, username: newUsername }));
+    setMsg({ type: "success", text: "Username updated!" });
+  }
 
-  if (!user) return (
-    <div className={styles.center}>
-      <motion.div className={styles.loginPrompt} initial={{opacity:0,y:24}} animate={{opacity:1,y:0}}>
-        <div className={styles.loginIcon}>
-          <svg width="40" height="40" viewBox="0 0 64 64" fill="none">
-            <path d="M22 12 L26 21 L20 19 Z" fill="#c0394d" opacity="0.85"/>
-            <path d="M42 12 L38 21 L44 19 Z" fill="#c0394d" opacity="0.85"/>
-            <path d="M12 32 Q32 19 52 32 Q32 45 12 32 Z" stroke="#c0394d" strokeWidth="1.8" fill="rgba(192,57,77,0.14)"/>
-            <ellipse cx="32" cy="32" rx="9" ry="8" fill="#c0394d"/>
-            <ellipse cx="32" cy="32" rx="3" ry="7.5" fill="#07060b"/>
-          </svg>
+  async function updatePassword(e) {
+    e.preventDefault(); setSaving(true); setMsg({ type: "", text: "" });
+    if (newPass !== confirmPass) { setMsg({ type: "error", text: "Passwords do not match" }); setSaving(false); return; }
+    const res  = await fetch("/api/auth/profile", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "password", oldPassword: oldPass, newPassword: newPass }),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (data.error) { setMsg({ type: "error", text: data.error }); return; }
+    setOldPass(""); setNewPass(""); setConfirmPass("");
+    setMsg({ type: "success", text: "Password updated!" });
+  }
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/"); router.refresh();
+  }
+
+  async function removeWatchlist(anime_id) {
+    await fetch(`/api/watchlist?anime_id=${anime_id}`, { method: "DELETE" });
+    setWatchlist(w => w.filter(a => a.anime_id !== anime_id));
+  }
+
+  function initials(name) { return name?.charAt(0)?.toUpperCase() || "?"; }
+
+  if (loading) return (
+    <div style={{ minHeight: "100vh", backgroundColor: "#0e0e12", display: "flex", alignItems: "center", justifyContent: "center", color: "#a0a0b0", fontFamily: "Inter,sans-serif" }}>
+      Loading...
+    </div>
+  );
+
+  return (
+    <div style={s.wrap}>
+
+      {/* ── Header ── */}
+      <div style={s.header}>
+        <div style={s.avatarWrap} onClick={() => setShowPicker(true)} title="Change avatar">
+          {user.image
+            ? <img src={user.image} alt={user.username} style={s.avatarImg} />
+            : <div style={s.avatarFallback}>{initials(user.username)}</div>}
+          <div style={s.avatarOverlay}>Change</div>
         </div>
-        <h2 className={styles.loginTitle}>Sign In To Fly Anime</h2>
-        <p className={styles.loginDesc}>Connect your AniList account to sync your watchlist, track progress, rate anime, and view your statistics.</p>
-        <a href="/api/auth/login" className={styles.loginBtn}>Sign in with AniList</a>
-        {recent.length > 0 && <p className={styles.localNote}>Your local history is shown below ↓</p>}
-      </motion.div>
-      {recent.length > 0 && (
-        <div className={`container ${styles.localSection}`}>
-          <h3 className={styles.localHeading}>Local Watch History</h3>
-          <div className={styles.localGrid}>
-            {recent.map(item => (
-              <Link key={item.animeId} href={`/watch/${item.animeId}/${item.epSlug}`} className={styles.localCard}>
-                {item.poster && <img src={item.poster} alt={item.animeName} className={styles.localImg} loading="lazy"/>}
-                <div className={styles.localInfo}>
-                  <p className={styles.localTitle}>{item.animeName}</p>
-                  <span className={styles.localEp}>Ep {item.epNumber}</span>
-                </div>
-              </Link>
+        <div style={{ flex: 1 }}>
+          <h1 style={s.username}>{user.username}</h1>
+          <p style={s.email}>{user.email}</p>
+        </div>
+        <button style={s.logoutBtn} onClick={logout}>Logout</button>
+      </div>
+
+      {/* ── Avatar Picker ── */}
+      {showPicker && (
+        <div style={s.picker}>
+          <div style={s.pickerHead}>
+            <h3 style={s.pickerTitle}>Choose Avatar</h3>
+            <button style={s.closeBtn} onClick={() => setShowPicker(false)}>✕</button>
+          </div>
+          <div style={s.avatarGrid}>
+            {AVATARS.map((a, i) => (
+              <div key={i} style={s.avatarOpt} onClick={() => updateAvatar(a.url)} title={a.label}>
+                <img src={a.url} alt={a.label} style={s.avatarOptImg}
+                  onError={e => { e.target.style.display = "none"; }} />
+                <span style={s.avatarOptLabel}>{a.label}</span>
+              </div>
             ))}
           </div>
         </div>
       )}
-    </div>
-  );
 
-  const aniStats = user.statistics?.anime;
-
-  return (
-    <div className={styles.page}>
-      <div className={styles.hero}>
-        {user.bannerImage && <img src={user.bannerImage} alt="" className={styles.heroBanner}/>}
-        <div className={styles.heroOverlay}/>
-        <div className={`container ${styles.heroContent}`}>
-          <img src={user.avatar?.large} alt={user.name} className={styles.avatar}/>
-          <div className={styles.userInfo}>
-            <h1 className={styles.username}>{user.name}</h1>
-            {user.about && <p className={styles.about}>{user.about.replace(/<[^>]*>/g,"").slice(0,200)}</p>}
-            <div className={styles.userLinks}>
-              <a href={user.siteUrl} target="_blank" rel="noreferrer" className={styles.anilistLink}>AniList Profile ↗</a>
-              <a href="/api/auth/logout" className={styles.logoutBtn}>Logout</a>
-            </div>
-          </div>
-        </div>
+      {/* ── Tabs ── */}
+      <div style={s.tabs}>
+        {[
+          { key: "profile",   label: "Edit Profile" },
+          { key: "watchlist", label: "Watchlist" },
+          { key: "history",   label: "Continue Watching" },
+        ].map(t => (
+          <button key={t.key} style={{ ...s.tab, ...(tab === t.key ? s.tabActive : {}) }}
+            onClick={() => setTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {aniStats && (
-        <div className={`container ${styles.quickStats}`}>
-          <StatCard label="Anime Watched"  value={aniStats.count || 0}/>
-          <StatCard label="Episodes Watched"       value={(aniStats.episodesWatched||0).toLocaleString()}/>
-          <StatCard label="Hours Watched"   value={fmtMins(aniStats.minutesWatched||0)} accent/>
-          <StatCard label="Mean Score"     value={aniStats.meanScore ? `${aniStats.meanScore}%` : "N/A"}/>
+      {/* ── Edit Profile ── */}
+      {tab === "profile" && (
+        <div style={s.section}>
+          {msg.text && (
+            <p style={{ ...s.msgBox, color: msg.type === "error" ? "#e8417a" : "#4ade80" }}>{msg.text}</p>
+          )}
+
+          <form onSubmit={updateUsername} style={s.form}>
+            <h3 style={s.formTitle}>Change Username</h3>
+            <label style={s.label}>Username</label>
+            <input style={s.input} type="text" value={newUsername}
+              onChange={e => setNewUsername(e.target.value)} required />
+            <button style={s.btn} type="submit" disabled={saving}>Save Username</button>
+          </form>
+
+          <div style={s.divider} />
+
+          <form onSubmit={updatePassword} style={s.form}>
+            <h3 style={s.formTitle}>Change Password</h3>
+            <label style={s.label}>Current Password</label>
+            <input style={s.input} type="password" value={oldPass}
+              onChange={e => setOldPass(e.target.value)} required />
+            <label style={s.label}>New Password</label>
+            <input style={s.input} type="password" placeholder="Minimum 6 characters" value={newPass}
+              onChange={e => setNewPass(e.target.value)} required />
+            <label style={s.label}>Confirm New Password</label>
+            <input style={s.input} type="password" value={confirmPass}
+              onChange={e => setConfirmPass(e.target.value)} required />
+            <button style={s.btn} type="submit" disabled={saving}>Save Password</button>
+          </form>
         </div>
       )}
 
-      <div className={`container ${styles.tabsWrap}`}>
-        <div className={styles.tabs}>
-          {TABS.map(t => (
-            <motion.button key={t.key}
-              className={`${styles.tab} ${tab===t.key ? styles.tabActive : ""}`}
-              onClick={() => setTab(t.key)} whileHover={{y:-1}} whileTap={{scale:0.97}}>
-              {t.label}
-            </motion.button>
-          ))}
-        </div>
-      </div>
-
-      <div className={`container ${styles.tabContent}`}>
-        <AnimatePresence mode="wait">
-          <motion.div key={tab} initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}} transition={{duration:0.22}}>
-            {["CURRENT","PLANNING","COMPLETED","DROPPED","PAUSED"].includes(tab) && <MediaListTab status={tab}/>}
-
-            {tab === "local" && (
-              recent.length === 0
-                ? <p className={styles.emptyList}>No local history found.</p>
-                : <div className={styles.localGrid}>
-                    {recent.map(item => (
-                      <Link key={item.animeId} href={`/watch/${item.animeId}/${item.epSlug}`} className={styles.localCard}>
-                        {item.poster && <img src={item.poster} alt={item.animeName} className={styles.localImg} loading="lazy"/>}
-                        <div className={styles.localInfo}>
-                          <p className={styles.localTitle}>{item.animeName}</p>
-                          <span className={styles.localEp}>Ep {item.epNumber}</span>
-                        </div>
-                      </Link>
-                    ))}
+      {/* ── Watchlist ── */}
+      {tab === "watchlist" && (
+        <div style={s.section}>
+          {watchlist.length === 0 ? (
+            <p style={s.empty}>Your watchlist is empty. <Link href="/browse" style={s.link}>Browse anime →</Link></p>
+          ) : (
+            <div style={s.grid}>
+              {watchlist.map(a => (
+                <div key={a.id} style={s.card}>
+                  {a.poster && <img src={a.poster} alt={a.anime_name} style={s.cardImg} />}
+                  <div style={s.cardBody}>
+                    <p style={s.cardTitle}>{a.anime_name}</p>
+                    <div style={s.cardActions}>
+                      <Link href={`/anime/${a.anime_id}`} style={s.cardLink}>View</Link>
+                      <button style={s.cardRemove} onClick={() => removeWatchlist(a.anime_id)}>Remove</button>
+                    </div>
                   </div>
-            )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-            {tab === "stats" && (
-              <div className={styles.statsPage}>
-                {!stats ? <div className="spinner"/> : (
-                  <>
-                    {stats.scores?.length > 0 && (
-                      <section className={styles.statSection}>
-                        <h3 className={styles.statSectionTitle}>Score Distribution</h3>
-                        <div className={styles.scoreBar}>
-                          {stats.scores.map(s => {
-                            const max = Math.max(...stats.scores.map(x=>x.count));
-                            const h = max > 0 ? Math.round((s.count/max)*100) : 0;
-                            return (
-                              <div key={s.score} className={styles.scoreBarCol}>
-                                <span className={styles.scoreBarCount}>{s.count || ""}</span>
-                                <div className={styles.scoreBarFill} style={{height:`${h}%`}}/>
-                                <span className={styles.scoreBarLabel}>{s.score/10}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </section>
-                    )}
-                    {stats.genres?.length > 0 && (
-                      <section className={styles.statSection}>
-                        <h3 className={styles.statSectionTitle}>Top Genres</h3>
-                        <div className={styles.genreGrid}>
-                          {stats.genres.map(g => (
-                            <Link key={g.genre} href={`/browse?category=genre/${g.genre.toLowerCase().replace(/ /g,"-")}`} className={styles.genreCard}>
-                              <span className={styles.genreName}>{g.genre}</span>
-                              <span className={styles.genreCount}>{g.count} anime</span>
-                              {g.minutesWatched > 0 && <span className={styles.genreTime}>{fmtMins(g.minutesWatched)}</span>}
-                            </Link>
-                          ))}
-                        </div>
-                      </section>
-                    )}
-                    {stats.statuses?.length > 0 && (
-                      <section className={styles.statSection}>
-                        <h3 className={styles.statSectionTitle}>List Breakdown</h3>
-                        <div className={styles.statusBreakdown}>
-                          {stats.statuses.map(s => (
-                            <div key={s.status} className={styles.statusBreakRow}>
-                              <span className={styles.statusBreakLabel}>{STATUS_LABELS[s.status]||s.status}</span>
-                              <span className={styles.statusBreakCount}>{s.count}</span>
-                              <span className={styles.statusBreakTime}>{fmtMins(s.minutesWatched||0)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+      {/* ── Continue Watching ── */}
+      {tab === "history" && (
+        <div style={s.section}>
+          {history.length === 0 ? (
+            <p style={s.empty}>No watch history yet.</p>
+          ) : (
+            <div style={s.grid}>
+              {history.map(a => (
+                <div key={a.id} style={s.card}>
+                  {a.poster && <img src={a.poster} alt={a.anime_name} style={s.cardImg} />}
+                  <div style={s.cardBody}>
+                    <p style={s.cardTitle}>{a.anime_name}</p>
+                    <p style={s.cardEp}>Episode {a.episode_number}</p>
+                    <Link href={`/watch/${a.anime_id}/ep-${a.episode_number}`} style={s.cardLink}>
+                      Resume →
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
+const s = {
+  wrap: { minHeight: "100vh", backgroundColor: "#0e0e12", padding: "80px 20px 40px", maxWidth: "900px", margin: "0 auto", fontFamily: "Inter,sans-serif" },
+  header: { display: "flex", alignItems: "center", gap: "20px", marginBottom: "36px", flexWrap: "wrap" },
+  avatarWrap: { position: "relative", cursor: "pointer", flexShrink: 0 },
+  avatarImg: { width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover", border: "3px solid #e8417a" },
+  avatarFallback: { width: "80px", height: "80px", borderRadius: "50%", backgroundColor: "#e8417a", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px", fontWeight: 800 },
+  avatarOverlay: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "rgba(0,0,0,0.65)", color: "#fff", fontSize: "11px", textAlign: "center", borderRadius: "0 0 50px 50px", padding: "3px 0" },
+  username: { color: "#fff", fontSize: "22px", fontWeight: 800, margin: "0 0 4px" },
+  email: { color: "#606070", fontSize: "13px", margin: 0 },
+  logoutBtn: { marginLeft: "auto", backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#a0a0b0", borderRadius: "8px", padding: "8px 16px", fontSize: "13px", cursor: "pointer", fontFamily: "Inter,sans-serif" },
+  picker: { backgroundColor: "#141418", border: "1px solid rgba(232,65,122,0.2)", borderRadius: "14px", padding: "20px", marginBottom: "28px" },
+  pickerHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" },
+  pickerTitle: { color: "#fff", fontSize: "16px", fontWeight: 700, margin: 0 },
+  closeBtn: { backgroundColor: "transparent", border: "none", color: "#a0a0b0", fontSize: "20px", cursor: "pointer" },
+  avatarGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: "12px" },
+  avatarOpt: { cursor: "pointer", textAlign: "center", padding: "6px", borderRadius: "8px" },
+  avatarOptImg: { width: "60px", height: "60px", borderRadius: "50%", objectFit: "cover" },
+  avatarOptLabel: { display: "block", color: "#606070", fontSize: "10px", marginTop: "4px" },
+  tabs: { display: "flex", gap: "4px", marginBottom: "28px", backgroundColor: "#141418", padding: "4px", borderRadius: "10px" },
+  tab: { flex: 1, backgroundColor: "transparent", border: "none", color: "#a0a0b0", padding: "10px", fontSize: "13px", fontWeight: 600, cursor: "pointer", borderRadius: "8px", fontFamily: "Inter,sans-serif" },
+  tabActive: { backgroundColor: "#e8417a", color: "#fff" },
+  section: { backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "14px", padding: "24px" },
+  form: { display: "flex", flexDirection: "column", gap: "12px" },
+  formTitle: { color: "#fff", fontSize: "16px", fontWeight: 700, margin: "0 0 4px" },
+  label: { color: "#a0a0b0", fontSize: "13px", fontWeight: 500 },
+  input: { backgroundColor: "#0e0e12", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "11px 14px", color: "#fff", fontSize: "14px", outline: "none", fontFamily: "Inter,sans-serif" },
+  btn: { backgroundColor: "#e8417a", color: "#fff", border: "none", borderRadius: "8px", padding: "11px 24px", fontSize: "14px", fontWeight: 700, cursor: "pointer", fontFamily: "Inter,sans-serif", alignSelf: "flex-start" },
+  divider: { height: "1px", backgroundColor: "rgba(255,255,255,0.06)", margin: "24px 0" },
+  msgBox: { fontSize: "13px", margin: "0 0 12px", fontWeight: 500 },
+  empty: { color: "#606070", fontSize: "14px", textAlign: "center", padding: "40px 0" },
+  link: { color: "#e8417a", textDecoration: "none" },
+  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "16px" },
+  card: { backgroundColor: "#0e0e12", borderRadius: "10px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)" },
+  cardImg: { width: "100%", height: "200px", objectFit: "cover" },
+  cardBody: { padding: "12px" },
+  cardTitle: { color: "#fff", fontSize: "13px", fontWeight: 600, margin: "0 0 8px", lineHeight: 1.4 },
+  cardEp: { color: "#e8417a", fontSize: "12px", margin: "0 0 8px" },
+  cardActions: { display: "flex", gap: "8px", alignItems: "center" },
+  cardLink: { color: "#e8417a", fontSize: "12px", textDecoration: "none", fontWeight: 600 },
+  cardRemove: { backgroundColor: "transparent", border: "none", color: "#606070", fontSize: "12px", cursor: "pointer", padding: 0, fontFamily: "Inter,sans-serif" },
+};
