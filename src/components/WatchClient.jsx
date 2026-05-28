@@ -787,16 +787,6 @@ export default function WatchClient({ animeId, epSlug }) {
                   </button>
                 )}
               </div>
-
-{anilistId && (
-  <AniListPanel
-    anilistId={anilistId}
-    animeId={animeId}
-    animeName={anime?.name}
-    poster={anime?.poster}
-  />
-)}
-
             </div>
           </div>
         )}
