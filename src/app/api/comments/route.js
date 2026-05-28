@@ -34,9 +34,9 @@ export async function POST(request) {
 
     const db = getDb();
     await db.execute({
-      sql: `INSERT INTO comments (user_id, anime_id, episode_id, content, is_spoiler, username, user_avatar)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      args: [user.id, anime_id, episode_id || "0", content.trim(), is_spoiler ? 1 : 0, user.username, user.image || null],
+      sql: `INSERT INTO comments (user_id, anime_id, anime_name, episode_id, content, is_spoiler, username, user_avatar)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [user.id, anime_id, anime_name || anime_id, episode_id || "0", content.trim(), is_spoiler ? 1 : 0, user.username, user.image || null],
     });
     return NextResponse.json({ success: true });
   } catch (e) {
