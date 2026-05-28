@@ -81,6 +81,8 @@ export async function initDb() {
     await db.execute(sql);
   }
 }
+// migrate: add anime_name to comments if missing
+await db.execute("ALTER TABLE comments ADD COLUMN anime_name TEXT").catch(() => {});
 
 export async function getUserFromRequest(request) {
   const token = request.cookies.get("fa_session")?.value;
