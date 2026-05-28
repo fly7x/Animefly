@@ -80,11 +80,11 @@ export async function initDb() {
   for (const sql of tables) {
     await db.execute(sql);
   }
+  // migrate: add anime_name to comments if missing
+  await db.execute("ALTER TABLE comments ADD COLUMN anime_name TEXT").catch(() => {});
 }
-// migrate: add anime_name to comments if missing
-await db.execute("ALTER TABLE comments ADD COLUMN anime_name TEXT").catch(() => {});
 
-export async function getUserFromRequest(request) {
+export async function getUserFromRequest
   const token = request.cookies.get("fa_session")?.value;
   if (!token) return null;
   const db = getDb();
