@@ -31,7 +31,7 @@ export default function CommentsSection({ animeId, animeName, episodeId }) {
     setPosting(true); setError("");
     const res  = await fetch("/api/comments", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ anime_id: animeId, episode_id: epId, content, is_spoiler: isSpoiler }),
+      body: JSON.stringify({ anime_id: animeId, anime_name: animeName, episode_id: epId, content, is_spoiler: isSpoiler }),
     });
     const data = await res.json();
     setPosting(false);
