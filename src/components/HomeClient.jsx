@@ -21,8 +21,8 @@ export default function HomeClient({ initialData }) {
     const localHistory = getRecentlyWatched(10);
     // Try AniList currently watching — silently ignore if not logged in
     getUserWatching()
-      .then(anilistWatching => {
-        setRecent(mergeWatchLists(anilistWatching, localHistory));
+      .then(() => {
+      setRecent(localHistory);
       })
       .catch(() => {
         // Not logged in or API error — fall back to local only
