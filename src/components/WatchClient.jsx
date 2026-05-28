@@ -788,14 +788,13 @@ export default function WatchClient({ animeId, epSlug }) {
                 )}
               </div>
 
-              {/* AniList sync panel */}
               {anilistId && (
-                <div style={{ marginTop: 14 }}>
-                  <AniListPanel
-                    anilistId={anilistId}
-                    epNumber={epNumber}
-                    totalEpisodes={anime?.episodes?.sub || null}
-                    compact
+  <AniListPanel
+    anilistId={anilistId}
+    animeId={animeId}
+    animeName={anime?.name}
+    poster={anime?.poster}
+  
                   />
                 </div>
               )}
