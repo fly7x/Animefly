@@ -4,7 +4,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { getRecentlyWatched } from "@/lib/watchProgress";
-import { getUserWatching } from "@/lib/anilistClient";
 import SpotlightBanner from "./SpotlightBanner";
 import Section from "./Section";
 import AnimeCard from "./AnimeCard";
