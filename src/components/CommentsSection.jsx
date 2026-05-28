@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 
-export default function CommentsSection({ animeId, episodeId }) {
+export default function CommentsSection({ animeId, animeName, episodeId }) {
   const [comments, setComments]   = useState([]);
   const [user, setUser]           = useState(null);
   const [content, setContent]     = useState("");
