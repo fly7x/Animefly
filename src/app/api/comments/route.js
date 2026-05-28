@@ -28,7 +28,7 @@ export async function POST(request) {
     const user = await getUserFromRequest(request);
     if (!user) return NextResponse.json({ error: "Please log in to comment" }, { status: 401 });
 
-    const { anime_id, episode_id, content, is_spoiler } = await request.json();
+    const { anime_id, anime_name, episode_id, content, is_spoiler } = await request.json();
     if (!anime_id || !content?.trim())
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
