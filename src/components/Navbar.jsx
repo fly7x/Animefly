@@ -168,22 +168,12 @@ export default function Navbar() {
 
           {/* Auth */}
 {user ? (
-  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-    <Link href="/profile" className={styles.avatarBtn} title={user.username}>
-      {user.image
-        ? <img src={user.image} alt={user.username} className={styles.avatarImg} />
-        : <span className={styles.avatarInitial}>{user.username?.[0]?.toUpperCase()}</span>
-      }
-    </Link>
-    <motion.button
-      className={styles.loginBtn}
-      onClick={logout}
-      whileHover={{ scale: 1.04, y: -1 }}
-      whileTap={{ scale: 0.97 }}
-    >
-      Logout
-    </motion.button>
-  </div>
+  <Link href="/profile" className={styles.avatarBtn} title={user.username}>
+    {user.image
+      ? <img src={user.image} alt={user.username} className={styles.avatarImg} />
+      : <span className={styles.avatarInitial}>{user.username?.[0]?.toUpperCase()}</span>
+    }
+  </Link>
 ) : (
   <motion.a
     href="/login"
@@ -194,6 +184,7 @@ export default function Navbar() {
     Login
   </motion.a>
 )}
+
 
 
           {/* Burger */}
