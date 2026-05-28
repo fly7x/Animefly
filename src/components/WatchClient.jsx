@@ -807,10 +807,15 @@ export default function WatchClient({ animeId, epSlug }) {
           animeName={anime?.name || ""}
           epSlug={epSlug}
           epNumber={epNumber}
-          anilistId={anilistId}
-          malId={moreInfo?.malId}
-        />
-      </div>
+          {anilistId && (
+  <AniListPanel
+    anilistId={anilistId}
+    animeId={animeId}
+    animeName={anime?.name}
+    poster={anime?.poster}
+  />
+)}
+
 
       {/* Right column */}
       <div className={styles.rightCol}>
