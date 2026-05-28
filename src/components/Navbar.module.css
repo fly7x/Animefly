@@ -52,22 +52,15 @@
 }
 
 .logoIcon {
-  width: 34px; height: 34px;
-  background: linear-gradient(135deg, var(--accent-deep) 0%, var(--accent) 100%);
-  border-radius: var(--r-md);
+  width: 44px; height: 34px;
+  background: transparent;
+  border-radius: 0;
   display: flex; align-items: center; justify-content: center;
-  color: #fff;
-  box-shadow: 0 2px 16px var(--accent-glow);
   flex-shrink: 0;
   position: relative;
-  overflow: hidden;
 }
-.logoIcon::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
-}
+.logoIcon::after { display: none; }
+
 
 .logoText { display: flex; flex-direction: row; align-items: baseline; gap: 0; }
 .logoMain {
