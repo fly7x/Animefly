@@ -803,17 +803,18 @@ export default function WatchClient({ animeId, epSlug }) {
 
         <CommentsSection
           animeId={animeId}
-          animeName={anime?.name || ""}
+                    animeName={anime?.name || ""}
           epSlug={epSlug}
           epNumber={epNumber}
-          {anilistId && (
-  <AniListPanel
-    anilistId={anilistId}
-    animeId={animeId}
-    animeName={anime?.name}
-    poster={anime?.poster}
-  />
-)}
+        />
+        {anilistId && (
+          <AniListPanel
+            anilistId={anilistId}
+            animeId={animeId}
+            animeName={anime?.name}
+            poster={anime?.poster}
+          />
+        )}
 
 
       {/* Right column */}
