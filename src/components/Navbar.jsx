@@ -26,7 +26,7 @@ export default function Navbar() {
   const debounce = useRef(null);
   const router   = useRouter();
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fn = () => setScroll(window.scrollY > 20);
