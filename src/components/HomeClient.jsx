@@ -9,20 +9,7 @@ import Section from "./Section";
 import AnimeCard from "./AnimeCard";
 import styles from "./HomeClient.module.css";
 
-/** Merge local + AniList watching, deduplicated by animeId, newest first */
-function mergeWatchLists(local, anilist) {
-  const seen = new Set();
-  const merged = [];
-  // AniList "currently watching" takes priority
-  for (const item of anilist) {
-    if (!seen.has(item.animeId)) { seen.add(item.animeId); merged.push({ ...item, source: "anilist" }); }
-  }
-  // Fill with local history for any not already in AniList list
-  for (const item of local) {
-    if (!seen.has(item.animeId)) { seen.add(item.animeId); merged.push({ ...item, source: "local" }); }
-  }
-  return merged;
-}
+
 
 export default function HomeClient({ initialData }) {
   const [data,    setData]    = useState(initialData);
