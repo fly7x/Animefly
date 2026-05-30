@@ -539,6 +539,17 @@ export default function WatchClient({ animeId, epSlug }) {
           )} */}
         </div>
 
+        {/* ── HiAnime-style watching label ──────────────────────────────── */}
+        <div style={{ backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "12px", padding: "16px 20px", margin: "12px 0 0", fontFamily: "Inter,sans-serif", textAlign: "center" }}>
+          <p style={{ color: "#a0a0b0", fontSize: "13px", margin: "0 0 4px" }}>You are watching</p>
+          <p style={{ color: "#e8417a", fontWeight: 700, fontSize: "16px", margin: "0 0 8px" }}>
+            Episode {epNumber}
+          </p>
+          <p style={{ color: "#606070", fontSize: "12px", margin: 0 }}>
+            If the current server doesn't work, please try another one.
+          </p>
+        </div>
+
         {/* ── Control panel ─────────────────────────────────────────────── */}
         <div className={styles.controlPanel}>
           <div className={styles.panelHeader}>
