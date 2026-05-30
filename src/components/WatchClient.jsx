@@ -869,9 +869,7 @@ export default function WatchClient({ animeId, epSlug }) {
       </div>
     </div>
   );
-}
-
-const wp = {
+  const wp = {
   serverPanel: {
     backgroundColor: "#141418",
     border: "1px solid rgba(255,255,255,0.07)",
@@ -934,3 +932,4 @@ const wp = {
     color: "#fff",
   },
 };
+}
