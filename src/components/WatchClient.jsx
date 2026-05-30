@@ -870,3 +870,66 @@ export default function WatchClient({ animeId, epSlug }) {
     </div>
   );
 }
+const wp = {
+  serverPanel: {
+    backgroundColor: "#141418",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: "12px",
+    padding: "20px 24px",
+    margin: "16px 0",
+    fontFamily: "Inter,sans-serif",
+  },
+  watchingLabel: {
+    color: "#a0a0b0",
+    fontSize: "14px",
+    textAlign: "center",
+    marginBottom: "4px",
+  },
+  epLabel: {
+    color: "#e8417a",
+    fontWeight: 700,
+  },
+  serverHint: {
+    color: "#606070",
+    fontSize: "12px",
+    textAlign: "center",
+    margin: "0 0 20px",
+  },
+  serverRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    padding: "14px 0",
+    borderTop: "1px dashed rgba(255,255,255,0.06)",
+  },
+  serverType: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    color: "#a0a0b0",
+    fontSize: "13px",
+    fontWeight: 600,
+    minWidth: "60px",
+  },
+  serverBtns: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+  },
+  serverBtn: {
+    backgroundColor: "#1a1a20",
+    border: "1px solid rgba(255,255,255,0.1)",
+    color: "#a0a0b0",
+    borderRadius: "6px",
+    padding: "7px 16px",
+    fontSize: "13px",
+    fontWeight: 600,
+    cursor: "pointer",
+    fontFamily: "Inter,sans-serif",
+  },
+  serverBtnActive: {
+    backgroundColor: "#e8417a",
+    border: "1px solid #e8417a",
+    color: "#fff",
+  },
+};
