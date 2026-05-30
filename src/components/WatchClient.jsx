@@ -869,7 +869,9 @@ export default function WatchClient({ animeId, epSlug }) {
       </div>
     </div>
   );
-  const wp = {
+}
+
+const wp = {
   serverPanel: {
     backgroundColor: "#141418",
     border: "1px solid rgba(255,255,255,0.07)",
@@ -925,6 +927,7 @@ export default function WatchClient({ animeId, epSlug }) {
     fontWeight: 600,
     cursor: "pointer",
     fontFamily: "Inter,sans-serif",
+    transition: "all 0.15s ease",
   },
   serverBtnActive: {
     backgroundColor: "#e8417a",
@@ -932,4 +935,3 @@ export default function WatchClient({ animeId, epSlug }) {
     color: "#fff",
   },
 };
-}
