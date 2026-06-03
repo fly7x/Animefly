@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { AuthProvider } from "@/components/AuthProvider";
 import LandingGate from "@/components/LandingGate";
+import { Analytics } from "@vercel/analytics/next";
 
 export const viewport = {
   themeColor: "#07060b",
@@ -35,6 +36,7 @@ export default function RootLayout({ children }) {
           </main>
           <Footer />
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
