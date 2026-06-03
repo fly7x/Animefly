@@ -808,7 +808,7 @@ export default function WatchClient({ animeId, epSlug }) {
           epSlug={epSlug}
           epNumber={epNumber}
         />
-        {anilistId && (
+                {anilistId && (
           <AniListPanel
             anilistId={anilistId}
             animeId={animeId}
@@ -816,9 +816,10 @@ export default function WatchClient({ animeId, epSlug }) {
             poster={anime?.poster}
           />
         )}
-
+      </div>{/* closes playerSection */}
 
       {/* Right column */}
+
       <div className={styles.rightCol}>
         <div className={styles.epSidebar}>
           <div className={styles.epSideHead}>
