@@ -20,7 +20,7 @@ export default function HomeClient({ initialData }) {
   useEffect(() => {
     const localHistory = getRecentlyWatched(10);
     // Try AniList currently watching — silently ignore if not logged in
-    getRecentlyWatched()
+    getUserWatching()
       .then(() => {
       setRecent(localHistory);
       })
