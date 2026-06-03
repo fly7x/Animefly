@@ -209,40 +209,64 @@ export async function POST(request) {
       }
 
       // ── SOURCES ───────────────────────────────────────────────────────
-      case "sources": {
-        try {
-          const { sourceId, mappedId, episodeId, subType = "", server = "" } = body;
+case "sources": {
+  try {
+    const { sourceId, mappedId, episodeId, subType = "", server = "" } = body;
 
-          if (!sourceId || !mappedId || !episodeId) {
-            return err("sourceId, mappedId, episodeId required");
-          }
+    if (!sourceId || !mappedId || !episodeId) {
+      return err("sourceId, mappedId, episodeId required");
+    }
 
-          const cacheKey = `cryo_src:${sourceId}:${mappedId}:${episodeId}:${subType}:${server}`;
-          const cached   = await getCachedAsync(cacheKey);
-          if (cached) return ok(cached);
+    const cacheKey = `cryo_src:${sourceId}:${mappedId}:${episodeId}:${subType}:${server}`;
+    const cached   = await getCachedAsync(cacheKey);
+    if (cached) return ok(cached);
 
-          const stream = await getSourcesFromSource(
-            sourceId,
-            mappedId,
-            episodeId,
-            subType,
-            server
-          );
+    const stream = await getSourcesFromSource(
+      sourceId, mappedId, episodeId, subType, server
+    );
 
-          if (stream?.sources?.length > 0) {
-            await setCachedAsync(cacheKey, stream, 120);
-          }
+    // ── Proxy all stream URLs through CF worker ──────────────────────
+    const PROXY = process.env.NEXT_PUBLIC_PROXY_URL || "";
 
-          return ok(stream);
+    if (PROXY && stream?.sources?.length > 0) {
+      const referer =
+        stream.headers?.Referer ||
+        stream.headers?.referer ||
+        stream.headers?.origin  ||
+        "";
 
-        } catch (e) {
-          return ok({
-            error: e.message,
-            status: e.response?.status,
-            body: e.response?.data,
-          });
-        }
+      stream.sources = stream.sources.map(s => {
+        if (!s.url) return s;
+        const params = new URLSearchParams({ url: s.url });
+        if (referer) params.set("referer", referer);
+        return { ...s, url: `${PROXY}/?${params.toString()}` };
+      });
+
+      if (stream.subtitles?.length > 0) {
+        stream.subtitles = stream.subtitles.map(t => {
+          if (!t.url) return t;
+          const params = new URLSearchParams({ url: t.url });
+          if (referer) params.set("referer", referer);
+          return { ...t, url: `${PROXY}/?${params.toString()}` };
+        });
       }
+    }
+    // ────────────────────────────────────────────────────────────────
+
+    if (stream?.sources?.length > 0) {
+      await setCachedAsync(cacheKey, stream, 120);
+    }
+
+    return ok(stream);
+
+  } catch (e) {
+    return ok({
+      error: e.message,
+      status: e.response?.status,
+      body: e.response?.data,
+    });
+  }
+}
 
       // ── PURGE ─────────────────────────────────────────────────────────
       case "purgeMapping": {
