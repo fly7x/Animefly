@@ -26,7 +26,7 @@ export default function CommunitySection() {
 
       {/* Shoutout */}
       <div style={s.shoutout}>
-        <span style={s.shoutoutText}>Check out our friend's site </span>
+        <span style={s.shoutoutText}>A very huge thanks to Zia for helping me out with this website! make sure to vist his site </span>
         <a
           href="https://animedex.fun"
           target="_blank"
