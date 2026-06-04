@@ -64,8 +64,9 @@ export default function HomeClient({ initialData }) {
   return (
     <div className={styles.page}>
       {/* Hero banner */}
-      <SpotlightBanner spotlights={spotlight} loading={loading} 
+      <SpotlightBanner spotlights={spotlight} loading={loading} />
       <DiscordBanner />
+
 
       {/* Continue Watching */}
       {recent.length > 0 && (
