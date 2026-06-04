@@ -1,0 +1,21 @@
+# deps
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+
+# env files
+.env
+.env.local
+.env.production
+
+# server data (announcements, etc.)
+data/
+
+# misc
+.DS_Store
+*.log
+node_modules

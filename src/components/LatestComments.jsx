@@ -5,7 +5,10 @@ export default function LatestComments() {
   const [comments, setComments] = useState([]);
 
   useEffect(() => {
-    fetch("/api/comments/recent").then(r => r.json()).then(d => setComments(d.comments || []));
+    fetch("/api/comments/recent")
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(d => setComments(d.comments || []))
+      .catch(() => {});
   }, []);
 
   if (comments.length === 0) return null;
