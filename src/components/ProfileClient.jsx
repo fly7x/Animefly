@@ -76,19 +76,33 @@ export default function ProfileClient() {
     setMsg({ type: "success", text: "Username updated!" });
   }
 
-  async function updatePassword(e) {
-    e.preventDefault(); setSaving(true); setMsg({ type: "", text: "" });
-    if (newPass !== confirmPass) { setMsg({ type: "error", text: "Passwords do not match" }); setSaving(false); return; }
-    const res  = await fetch("/api/auth/profile", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "password", oldPassword: oldPass, newPassword: newPass }),
-    });
+  async function handlePasswordStep(e) {
+  e.preventDefault(); setSaving(true); setMsg({ type: "", text: "" });
+
+  if (!codeSent) {
+    // Step 1 — send code
+    const res  = await fetch("/api/auth/send-code", { method: "POST" });
     const data = await res.json();
     setSaving(false);
     if (data.error) { setMsg({ type: "error", text: data.error }); return; }
-    setOldPass(""); setNewPass(""); setConfirmPass("");
-    setMsg({ type: "success", text: "Password updated!" });
+    setCodeSent(true);
+    setMsg({ type: "success", text: "Code sent to your email!" });
+    return;
   }
+
+  // Step 2 — verify code + change password
+  if (newPass !== confirmPass) { setMsg({ type: "error", text: "Passwords do not match" }); setSaving(false); return; }
+  const res  = await fetch("/api/auth/verify-code", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code: verifyCode, newPassword: newPass }),
+  });
+  const data = await res.json();
+  setSaving(false);
+  if (data.error) { setMsg({ type: "error", text: data.error }); return; }
+  setCodeSent(false); setVerifyCode(""); setNewPass(""); setConfirmPass("");
+  setMsg({ type: "success", text: "Password changed successfully!" });
+}
+
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
