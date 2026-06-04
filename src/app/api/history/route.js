@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { getDb, getUserFromRequest } from "@/lib/db";
+import { getDb, getUserFromRequest, initDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
+  await initDb();
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ history: [] });
   const db = getDb();
@@ -15,6 +16,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  await initDb();
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
   const { anime_id, anime_name, poster, anilist_id, episode_number } = await request.json();
