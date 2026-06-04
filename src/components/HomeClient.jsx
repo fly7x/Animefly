@@ -44,7 +44,7 @@ export default function HomeClient({ initialData }) {
         animate={{ opacity: 1, y: 0 }}
       >
         <div className={styles.errSigil}>⚔</div>
-        <h2 className={styles.errTitle}>The Abyss Speaks No More</h2>
+        <h2 className={styles.errTitle}>Error...?!</h2>
         <p className={styles.errMsg}>{error}</p>
         <button className={styles.retryBtn} onClick={() => window.location.reload()}>
           Try Again
