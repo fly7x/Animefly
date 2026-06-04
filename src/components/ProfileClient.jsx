@@ -4,25 +4,28 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const AVATARS = [
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/death_note/File1.jpg",      label: "Light Yagami" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/death_note/File2.jpg",      label: "Mikami Teru" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/death_note/File3.jpg",      label: "L Lawliet" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/code_geass/File1.jpg",      label: "Lelouch" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/code_geass/File2.jpg",      label: "C.C." },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/demon_splayer/File15.jpg",  label: "Demon Slayer" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/jujutsu_kaisen/File1.png",  label: "Jujutsu Kaisen" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/chainsaw/01.png",           label: "Chainsaw Man" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/chainsaw/02.png",           label: "Chainsaw Man 2" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/chainsaw/03.png",           label: "Chainsaw Man 3" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/one_piece/user-10.jpeg",    label: "One Piece" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/one_piece/user-11.jpeg",    label: "One Piece 2" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/spy_family/06.png",         label: "Spy x Family" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/spy_family/07.png",         label: "Spy x Family 2" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/spy_family/08.png",         label: "Spy x Family 3" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/zoro_normal/av-zz-01.jpeg", label: "Zoro" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/zoro_normal/av-zz-02.jpeg", label: "Zoro 2" },
-  { url: "https://cdn.noitatnemucod.net/avatar/100x100/zoro_normal/av-zz-03.jpeg", label: "Zoro 3" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b80.jpg",     label: "Light Yagami" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b71.jpg",     label: "L Lawliet" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b77.jpg",     label: "Misa Amane" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b417.jpg",    label: "Lelouch" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b1868.jpg",   label: "C.C." },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b420.jpg",    label: "Suzaku" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b40882.jpg",  label: "Eren Yeager" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b40881.jpg",  label: "Levi Ackerman" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b40883.jpg",  label: "Mikasa" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b17.jpg",     label: "Naruto" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b13.jpg",     label: "Sasuke" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b14.jpg",     label: "Itachi" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b40.jpg",     label: "Luffy" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b41.jpg",     label: "Zoro" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b30.jpg",     label: "Gon Freecss" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b31.jpg",     label: "Killua" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b123479.jpg", label: "Tanjiro" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b143980.jpg", label: "Yuji Itadori" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b163370.jpg", label: "Denji" },
+  { url: "https://s4.anilist.co/file/anilistcdn/character/large/b179593.jpg", label: "Anya" },
 ];
+
 
 export default function ProfileClient() {
   const router = useRouter();
