@@ -173,21 +173,44 @@ export default function ProfileClient() {
 
           <div style={s.divider} />
 
-          <form onSubmit={updatePassword} style={s.form}>
-            <h3 style={s.formTitle}>Change Password</h3>
-            <label style={s.label}>Current Password</label>
-            <input style={s.input} type="password" value={oldPass}
-              onChange={e => setOldPass(e.target.value)} required />
-            <label style={s.label}>New Password</label>
-            <input style={s.input} type="password" placeholder="Minimum 6 characters" value={newPass}
-              onChange={e => setNewPass(e.target.value)} required />
-            <label style={s.label}>Confirm New Password</label>
-            <input style={s.input} type="password" value={confirmPass}
-              onChange={e => setConfirmPass(e.target.value)} required />
-            <button style={s.btn} type="submit" disabled={saving}>Save Password</button>
-          </form>
-        </div>
-      )}
+          {/* ── Password change with email verification ── */}
+<form onSubmit={handlePasswordStep} style={s.form}>
+  <h3 style={s.formTitle}>Change Password</h3>
+
+  {!codeSent ? (
+    <>
+      <p style={{ color: "#a0a0b0", fontSize: "13px", margin: 0 }}>
+        We'll send a verification code to your email.
+      </p>
+      <button style={s.btn} type="submit" disabled={saving}>
+        {saving ? "Sending..." : "Send Verification Code"}
+      </button>
+    </>
+  ) : (
+    <>
+      <label style={s.label}>Verification Code</label>
+      <input style={{ ...s.input, letterSpacing: "6px", textAlign: "center", fontSize: "20px" }}
+        type="text" maxLength={6} placeholder="000000"
+        value={verifyCode} onChange={e => setVerifyCode(e.target.value)} required />
+      <label style={s.label}>New Password</label>
+      <input style={s.input} type="password" placeholder="Minimum 6 characters"
+        value={newPass} onChange={e => setNewPass(e.target.value)} required />
+      <label style={s.label}>Confirm New Password</label>
+      <input style={s.input} type="password"
+        value={confirmPass} onChange={e => setConfirmPass(e.target.value)} required />
+      <div style={{ display: "flex", gap: "10px" }}>
+        <button style={s.btn} type="submit" disabled={saving}>
+          {saving ? "Changing..." : "Change Password"}
+        </button>
+        <button type="button" style={{ ...s.btn, backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#a0a0b0" }}
+          onClick={() => { setCodeSent(false); setVerifyCode(""); }}>
+          Resend Code
+        </button>
+      </div>
+    </>
+  )}
+</form>
+
 
       {/* ── Watchlist ── */}
       {tab === "watchlist" && (
