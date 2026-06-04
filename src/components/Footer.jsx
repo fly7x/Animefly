@@ -129,12 +129,10 @@ export default function Footer() {
           <Link href="/browse"   className={styles.colLink}><span className={styles.linkChevron}>›</span>Catalog</Link>
           <Link href="/search"   className={styles.colLink}><span className={styles.linkChevron}>›</span>Search</Link>
           <Link href="/schedule" className={styles.colLink}><span className={styles.linkChevron}>›</span>Schedule</Link>
-          <a href="https://anilist.co" target="_blank" rel="noreferrer" className={styles.colLink}>
-            <span className={styles.linkChevron}>›</span>AniList
-          </a>
+        
         </div>
         
-      {/* Latest Comments */}
+      {/* Latest comunity */}
         <CommunitySection />
 
       </div>
@@ -143,7 +141,7 @@ export default function Footer() {
       <div className={styles.bottom}>
         <p className={styles.disclaimer}>
           Fly Anime does not host any video files. All content is sourced from publicly available third-party providers.
-        </p>
+          </p>
         <p className={styles.copy}>© {new Date().getFullYear()} Fly Anime</p>
       </div>
     </footer>
