@@ -10,6 +10,15 @@ export function getDb() {
 export async function initDb() {
   const db = getDb();
   const tables = [
+    `CREATE TABLE IF NOT EXISTS verification_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  code TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  used INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+)`,
+
     `CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT NOT NULL UNIQUE,
