@@ -3,6 +3,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+const [codeSent,    setCodeSent]    = useState(false);
+const [verifyCode,  setVerifyCode]  = useState("");
+
 const AVATARS = [
   { url: "https://s4.anilist.co/file/anilistcdn/character/large/b80.jpg",     label: "Light Yagami" },
   { url: "https://s4.anilist.co/file/anilistcdn/character/large/b71.jpg",     label: "L Lawliet" },
