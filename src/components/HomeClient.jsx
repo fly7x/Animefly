@@ -1,4 +1,5 @@
 "use client";
+import DiscordBanner from "@/components/DiscordBanner";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -63,7 +64,8 @@ export default function HomeClient({ initialData }) {
   return (
     <div className={styles.page}>
       {/* Hero banner */}
-      <SpotlightBanner spotlights={spotlight} loading={loading} />
+      <SpotlightBanner spotlights={spotlight} loading={loading} 
+      <DiscordBanner />
 
       {/* Continue Watching */}
       {recent.length > 0 && (
