@@ -4,6 +4,7 @@ import { getDb, getUserFromRequest } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
+  await initDb();
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ watchlist: [] });
   const db = getDb();
@@ -15,6 +16,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  await initDb();
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
   const { anime_id, anime_name, poster, type, anilist_id } = await request.json();
@@ -29,6 +31,7 @@ export async function POST(request) {
 }
 
 export async function DELETE(request) {
+  await initDb();
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
   const { searchParams } = new URL(request.url);
