@@ -19,7 +19,7 @@
     "hls.js": "^1.6.2",
     "next": "15.5.19",
     "react": "^19.1.2",
-    "libass-wasm": "^4.1.0"
+    "libass-wasm": "^4.1.0",
     "resend": "^4.0.0",
     "react-dom": "^19.1.2"
   },
