@@ -1,49 +1,42 @@
 "use client";
-import { useState, useEffect } from "react";
 
-export default function LatestComments() {
-  const [comments, setComments] = useState([]);
-
-  useEffect(() => {
-    fetch("/api/comments/recent")
-      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(d => setComments(d.comments || []))
-      .catch(() => {});
-  }, []);
-
-  if (comments.length === 0) return null;
-
-  function timeAgo(str) {
-    const diff = Date.now() - new Date(str).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1)  return "just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24)  return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
-  }
-
-  function initials(name) { return name?.charAt(0)?.toUpperCase() || "?"; }
-
+export default function CommunitySection() {
   return (
     <div style={s.wrap}>
-      <h4 style={s.title}>Latest Comments</h4>
-      {comments.map(c => (
-        <div key={c.id} style={s.item}>
-          <div style={s.avatar}>{initials(c.username)}</div>
-          <div style={s.body}>
-            <div style={s.meta}>
-              <span style={s.username}>{c.username}</span>
-              <span style={s.dot}>·</span>
-              <span style={s.anime}>{c.anime_name || c.anime_id}</span>
-              <span style={s.time}>{timeAgo(c.created_at)}</span>
-            </div>
-            <p style={s.text}>
-              {c.content.length > 80 ? c.content.slice(0, 80) + "..." : c.content}
-            </p>
-          </div>
+
+      {/* Discord */}
+      <h4 style={s.title}>Latest from Community</h4>
+      <a
+        href="https://dsc.gg/flyanime"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={s.discordCard}
+      >
+        <div style={s.discordIcon}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
+            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+          </svg>
         </div>
-      ))}
+        <div>
+          <p style={s.discordTitle}>Join our Discord</p>
+          <p style={s.discordSub}>Chat, updates & community — dsc.gg/flyanime</p>
+        </div>
+        <span style={s.discordArrow}>→</span>
+      </a>
+
+      {/* Shoutout */}
+      <div style={s.shoutout}>
+        <span style={s.shoutoutText}>Check out our friend's site </span>
+        <a
+          href="https://animedex.fun"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={s.shoutoutLink}
+        >
+          animedex.fun ↗
+        </a>
+      </div>
+
     </div>
   );
 }
@@ -51,13 +44,16 @@ export default function LatestComments() {
 const s = {
   wrap: { marginBottom: "32px", fontFamily: "Inter,sans-serif" },
   title: { color: "#fff", fontSize: "13px", fontWeight: 700, marginBottom: "14px", textTransform: "uppercase", letterSpacing: "1px" },
-  item: { display: "flex", gap: "10px", alignItems: "flex-start", marginBottom: "12px" },
-  avatar: { width: "32px", height: "32px", borderRadius: "50%", backgroundColor: "#e8417a", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "13px", flexShrink: 0 },
-  body: { flex: 1 },
-  meta: { display: "flex", alignItems: "center", gap: "5px", flexWrap: "wrap", marginBottom: "3px" },
-  username: { color: "#fff", fontWeight: 600, fontSize: "13px" },
-  dot: { color: "#606070", fontSize: "12px" },
-  anime: { color: "#e8417a", fontSize: "12px" },
-  time: { color: "#606070", fontSize: "12px", marginLeft: "auto" },
-  text: { color: "#a0a0b0", fontSize: "13px", margin: 0, lineHeight: 1.5 },
+  discordCard: {
+    display: "flex", alignItems: "center", gap: "14px",
+    backgroundColor: "#5865F2", borderRadius: "12px", padding: "14px 16px",
+    textDecoration: "none", marginBottom: "14px", transition: "opacity 0.2s",
+  },
+  discordIcon: { width: "40px", height: "40px", borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  discordTitle: { color: "#fff", fontWeight: 700, fontSize: "14px", margin: "0 0 3px" },
+  discordSub: { color: "rgba(255,255,255,0.75)", fontSize: "12px", margin: 0 },
+  discordArrow: { color: "#fff", fontSize: "18px", marginLeft: "auto", opacity: 0.7 },
+  shoutout: { backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "10px", padding: "12px 16px" },
+  shoutoutText: { color: "#606070", fontSize: "13px" },
+  shoutoutLink: { color: "#e8417a", fontSize: "13px", fontWeight: 600, textDecoration: "none" },
 };
