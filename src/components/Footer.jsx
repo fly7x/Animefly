@@ -135,7 +135,7 @@ export default function Footer() {
         </div>
         
       {/* Latest Comments */}
-        <LatestComments />
+        <CommunitySection />
 
       </div>
 
