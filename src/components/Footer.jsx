@@ -1,5 +1,5 @@
 "use client";
-import LatestComments from "@/components/LatestComments";
+import CommunitySection from "@/components/LatestComments";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
