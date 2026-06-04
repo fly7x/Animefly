@@ -2,33 +2,38 @@
  * api.js — Client-side fetch helpers
  * All calls go to /api/* (same origin) — no secrets exposed to browser.
  *
- * FIX: On Vercel, SSR/API routes run server-side where window is undefined.
- * The original code fell back to "http://localhost:3000" which always fails
- * in production. We now resolve the correct base URL from env vars:
- *   - NEXT_PUBLIC_SITE_URL  → your custom domain (set in Vercel dashboard)
- *   - VERCEL_URL            → auto-set by Vercel to the deployment URL
- *   - fallback              → http://localhost:3000 (local dev only)
+ * VPS deployment: always use relative URLs for API calls.
+ * Relative URLs work for both client-side (browser resolves against current origin)
+ * and server-side (Next.js resolves against the internal server).
+ *
+ * NEXT_PUBLIC_SITE_URL is only needed for absolute URL contexts (e.g. OG tags, sitemaps).
+ * It is NOT needed for API calls since we use relative paths everywhere.
  */
 
 const BASE = "/api";
 
-function getOrigin() {
-  if (typeof window !== "undefined") return window.location.origin;
-  // Server-side rendering on Vercel: window doesn't exist.
-  // NEXT_PUBLIC_SITE_URL = your production domain, e.g. https://mysite.vercel.app
-  // VERCEL_URL = auto-injected by Vercel, e.g. mysite-abc123.vercel.app (no https://)
+/**
+ * Get the base URL for API calls.
+ * - Client-side: always use relative URL (browser handles origin)
+ * - Server-side: use NEXT_PUBLIC_SITE_URL if set, otherwise localhost
+ *   (server-side API calls are rare — most data fetching is client-side)
+ */
+function getBaseUrl() {
+  if (typeof window !== "undefined") return ""; // relative URL on client
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return "http://localhost:3000";
 }
 
 async function apiFetch(path, params = {}) {
-  const origin = getOrigin();
-  const url    = new URL(BASE + path, origin);
+  const base = getBaseUrl();
+  const urlStr = base + BASE + path;
+  const url = new URL(urlStr, base || "http://localhost");
   Object.entries(params).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
   });
-  const res = await fetch(url.toString());
+  // For relative URLs (client-side), just use the path+search
+  const fetchUrl = base ? url.toString() : url.pathname + url.search;
+  const res = await fetch(fetchUrl);
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
     throw new Error(e.error || `Request failed: ${res.status}`);
@@ -37,8 +42,7 @@ async function apiFetch(path, params = {}) {
 }
 
 async function cryPost(action, body = {}) {
-  const origin = getOrigin();
-  const res = await fetch(`${origin}${BASE}/stream/crysoline`, {
+  const res = await fetch(`${BASE}/stream/crysoline`, {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify({ action, ...body }),
@@ -55,12 +59,7 @@ export const api = {
   home:      ()               => apiFetch("/anime/home"),
   search:    (q, page = 1)   => apiFetch("/anime/search", { q, page }),
   category:  (cat, page = 1) => apiFetch(`/anime/category/${cat}`, { page }),
-  /**
-   * Guard against undefined/null slugs — these cause 404s like
-   * GET /api/anime/info/undefined which spam logs and waste quota.
-   * Root cause: AnimeDetailClient received wrong prop name (id vs animeId).
-   * This guard is a safety net so a bad prop never hits the network.
-   */
+
   info: (slug) => {
     if (!slug || slug === "undefined" || slug === "null") {
       console.warn("[api.info] called with invalid slug:", slug);
@@ -77,33 +76,29 @@ export const api = {
     return apiFetch(`/anime/episodes/${slug}`);
   },
 
+  /** Rich episode metadata from ani.zip (thumbnails, titles, summaries, ratings) */
+  episodesMeta: (anilistId) => {
+    if (!anilistId) return Promise.resolve(null);
+    return apiFetch(`/anime/episodes-meta/${anilistId}`);
+  },
+
   // ── Crysoline streaming (server-side proxy) ───────────────────────────
   crysoline: {
-    /**
-     * Map an AniList ID to all available Crysoline sources.
-     * lang: "en" (default, fast) | "all" (all 24 sources)
-     */
     map: (anilistId, lang = "en") =>
       cryPost("map", { anilistId, lang }),
 
-    /** Map a single source (incremental, avoids rate limit) */
     mapOne: (anilistId, sourceId) =>
       cryPost("mapOne", { anilistId, sourceId }),
 
-    /** Get episode list from a specific source.
-     *  Pass anilistId so the server can auto-fix stale slugs on 404. */
     episodes: (sourceId, mappedId, anilistId) =>
       cryPost("episodes", { sourceId, mappedId, ...(anilistId ? { anilistId } : {}) }),
 
-    /** Get streaming servers (only for sources with hasServers:true) */
-    servers: (sourceId, mappedId, episodeId) =>
-      cryPost("servers", { sourceId, mappedId, episodeId }),
+    servers: (sourceId, mappedId, episodeId, episodeNumber) =>
+      cryPost("servers", { sourceId, mappedId, episodeId, episodeNumber }),
 
-    /** Get actual stream URLs for an episode */
-    sources: (sourceId, mappedId, episodeId, subType = "", server = "") =>
-      cryPost("sources", { sourceId, mappedId, episodeId, subType, server }),
+    sources: (sourceId, mappedId, episodeId, subType = "", server = "", episodeNumber) =>
+      cryPost("sources", { sourceId, mappedId, episodeId, subType, server, episodeNumber }),
 
-    /** Auto-find first working stream across all sources */
     auto: (anilistId, epNumber, subType = "sub") =>
       cryPost("auto", { anilistId, epNumber, subType }),
   },

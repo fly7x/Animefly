@@ -9,8 +9,8 @@
  *
  * Cache TTLs:
  *   Source mappings  → permanent (SQLite anime_source_map table)
- *   Episode lists    → 10 min
- *   Stream sources   → 2 min
+ *   Episode lists    → 2h
+ *   Stream sources   → 5min (AnimePahe) / 30min (others)
  *
  * BUG FIXES applied:
  *   FIX A — "map" action: mapAnilistSequential was called without the `titles`
@@ -44,6 +44,19 @@ import { getAniListEpisodeMeta } from "@/lib/anilist";
 
 // Increase Vercel serverless function timeout — sequential mapping needs more than the 10s default
 export const maxDuration = 60;
+
+// ── In-process request deduplication ─────────────────────────────────────────
+// Prevents multiple concurrent requests for the same mapOne key from all
+// hitting Crysoline simultaneously (common when multiple users load the same
+// anime at the same time on the same server instance).
+const _inFlight = new Map(); // key → Promise
+
+async function dedupe(key, fn) {
+  if (_inFlight.has(key)) return _inFlight.get(key);
+  const p = fn().finally(() => _inFlight.delete(key));
+  _inFlight.set(key, p);
+  return p;
+}
 
 // ── Helper: fetch AniList titles for fallback mapping ─────────────────────────
 // Returns [] instead of throwing so callers don't need try/catch.
@@ -86,7 +99,9 @@ export async function POST(request) {
           titles = await fetchTitles(anilistId);
         }
 
-        const mappedId = await mapAnilistToSource(anilistId, sourceId, titles);
+        const mappedId = await dedupe(`map1:${anilistId}:${sourceId}`, () =>
+          mapAnilistToSource(anilistId, sourceId, titles)
+        );
         const src      = CRYSOLINE_SOURCES.find(s => s.id === sourceId);
         const result   = { sourceId, mappedId: mappedId||null, sourceName: src?.name||sourceId, found: !!mappedId };
 
@@ -188,85 +203,67 @@ export async function POST(request) {
         }
 
         const result = { episodes: episodes || [], count: (episodes || []).length };
-        if (result.count > 0) await setCachedAsync(cacheKey, result, 600);
+        if (result.count > 0) await setCachedAsync(cacheKey, result, 7200); // 2h — reduce Vercel invocations
         return ok(result);
       }
 
       // ── SERVERS ───────────────────────────────────────────────────────
       case "servers": {
-        const { sourceId, mappedId, episodeId } = body;
+        const { sourceId, mappedId, episodeId, episodeNumber } = body;
         if (!sourceId || !mappedId || !episodeId) return err("sourceId, mappedId, episodeId required");
 
         const cacheKey = `cryo_srv:${sourceId}:${mappedId}:${episodeId}`;
         const cached   = await getCachedAsync(cacheKey);
         if (cached) return ok(cached);
 
-        const servers = await getServersFromSource(sourceId, mappedId, episodeId);
+        const servers = await getServersFromSource(sourceId, mappedId, episodeId, episodeNumber);
         const result  = { servers: servers||[] };
 
-        if (result.servers.length > 0) await setCachedAsync(cacheKey, result, 120);
+        if (result.servers.length > 0) await setCachedAsync(cacheKey, result, 1800); // 30min
         return ok(result);
       }
 
       // ── SOURCES ───────────────────────────────────────────────────────
-case "sources": {
-  try {
-    const { sourceId, mappedId, episodeId, subType = "", server = "" } = body;
+      case "sources": {
+        try {
+          const { sourceId, mappedId, episodeId, subType = "", server = "", episodeNumber } = body;
 
-    if (!sourceId || !mappedId || !episodeId) {
-      return err("sourceId, mappedId, episodeId required");
-    }
+          if (!sourceId || !mappedId || !episodeId) {
+            return err("sourceId, mappedId, episodeId required");
+          }
 
-    const cacheKey = `cryo_src:${sourceId}:${mappedId}:${episodeId}:${subType}:${server}`;
-    const cached   = await getCachedAsync(cacheKey);
-    if (cached) return ok(cached);
+          const cacheKey = `cryo_src:${sourceId}:${mappedId}:${episodeId}:${subType}:${server}`;
+          const cached   = await getCachedAsync(cacheKey);
+          if (cached) return ok(cached);
 
-    const stream = await getSourcesFromSource(
-      sourceId, mappedId, episodeId, subType, server
-    );
+          const stream = await getSourcesFromSource(
+            sourceId,
+            mappedId,
+            episodeId,
+            subType,
+            server,
+            episodeNumber
+          );
 
-    // ── Proxy all stream URLs through CF worker ──────────────────────
-    const PROXY = process.env.NEXT_PUBLIC_PROXY_URL || "";
+          if (stream?.sources?.length > 0) {
+            // AnimePahe (owocdn/uwucdn) URLs expire quickly — don't cache them long
+            const hasExpirableUrl = stream.sources.some(s =>
+              s.url?.includes("owocdn") || s.url?.includes("uwucdn")
+            );
+            const ttl = hasExpirableUrl ? 300 : 1800; // 5min for AnimePahe, 30min for others
+            await setCachedAsync(cacheKey, stream, ttl);
+          }
 
-    if (PROXY && stream?.sources?.length > 0) {
-      const referer =
-        stream.headers?.Referer ||
-        stream.headers?.referer ||
-        stream.headers?.origin  ||
-        "";
+          return ok(stream);
 
-      stream.sources = stream.sources.map(s => {
-        if (!s.url) return s;
-        const params = new URLSearchParams({ url: s.url });
-        if (referer) params.set("referer", referer);
-        return { ...s, url: `${PROXY}/?${params.toString()}` };
-      });
-
-      if (stream.subtitles?.length > 0) {
-        stream.subtitles = stream.subtitles.map(t => {
-          if (!t.url) return t;
-          const params = new URLSearchParams({ url: t.url });
-          if (referer) params.set("referer", referer);
-          return { ...t, url: `${PROXY}/?${params.toString()}` };
-        });
+        } catch (e) {
+          return ok({
+            error: e.message,
+            status: e.response?.status,
+            body: e.response?.data,
+          });
+        }
       }
-    }
-    // ────────────────────────────────────────────────────────────────
-
-    if (stream?.sources?.length > 0) {
-      await setCachedAsync(cacheKey, stream, 120);
-    }
-
-    return ok(stream);
-
-  } catch (e) {
-    return ok({
-      error: e.message,
-      status: e.response?.status,
-      body: e.response?.data,
-    });
-  }
-}
 
       // ── PURGE ─────────────────────────────────────────────────────────
       case "purgeMapping": {

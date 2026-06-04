@@ -1,37 +1,25 @@
 /**
- * WatchClient — Upgraded watch page
+ * WatchClient — Streamlined watch page
  *
- * Key improvements over the original:
+ * Sources:
+ *   - Crysoline: AnimePahe (default), AnimeGG, Anizone
+ *   - Embedded: VidNest, VidNest Pahe, MegaPlay, AnimePlay
  *
- *   1. PERSISTENT PLAYER: HlsPlayer is never re-mounted on episode change.
- *      Only the `src` prop changes, so hls.js is destroyed+re-init but the
- *      <video> DOM node is kept. This eliminates the full React reconcile cost.
- *
- *   2. EPISODE PREFETCHING: On hover over prev/next episode buttons, we begin
- *      fetching the stream URL. If the user clicks immediately, the data is
- *      already in-flight or cached.
- *
- *   3. SOURCE PERSISTENCE: Selected source (id + subType) is saved to
- *      localStorage and auto-applied on next visit/episode change.
- *
- *   4. FALLBACK CHAIN: If a source fails, the next source is tried automatically.
- *
- *   5. SKELETON LOADERS: Episode list and info panel show skeletons while loading
- *      instead of blank states.
- *
- *   6. CACHING: useQuery hook caches anime info + episodes with SWR semantics,
- *      so navigating back is instant.
- *
- *   7. INSTANT UI: Episode selection shows immediate loading feedback while
- *      the new stream URL is fetched in the background.
+ * Features:
+ *   - Persistent HlsPlayer (never re-mounted on episode change)
+ *   - Source preference persistence (localStorage)
+ *   - Automatic fallback chain (AnimePahe → AnimeGG → Anizone → VidNest)
+ *   - Hydration-safe state (no localStorage reads in useState)
+ *   - Watch progress saving
+ *   - Episode prefetching on hover
  */
 "use client";
-import { useState, useEffect, useRef, useCallback, useTransition } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { idFromSlug } from "@/lib/utils";
-import { PROVIDERS, buildEmbedUrl, SAFE_PROVIDERS } from "@/lib/providers";
+import { VIDNEST_PROVIDERS, MEGAPLAY_PROVIDERS, ANIMEPLAY_PROVIDERS, buildVidnestUrl } from "@/lib/providers";
 import { CRYSOLINE_SOURCES, DEFAULT_SOURCE_ID, FALLBACK_SOURCE_IDS } from "@/lib/crysoline";
 import { saveProgress } from "@/lib/watchProgress";
 import { useQuery, prefetch } from "@/hooks/useQuery";
@@ -40,12 +28,14 @@ import CommentsSection from "./CommentsSection";
 import AniListPanel from "./AniListPanel";
 import styles from "./WatchClient.module.css";
 
-const PRIMARY_EMBED = PROVIDERS.filter(p => SAFE_PROVIDERS.includes(p.id)).slice(0, 6);
-
 // ── Source preference persistence ─────────────────────────────────────────────
 const PREF_KEY = "player_source_pref";
-function loadSourcePref()       { try { return JSON.parse(localStorage.getItem(PREF_KEY) || "{}"); } catch { return {}; } }
+function loadSourcePref() { try { return JSON.parse(localStorage.getItem(PREF_KEY) || "{}"); } catch { return {}; } }
 function saveSourcePref(update) { try { localStorage.setItem(PREF_KEY, JSON.stringify({ ...loadSourcePref(), ...update })); } catch {} }
+
+// Module-level dedup: prevents StrictMode double-invoke from firing two
+// identical probe races for the same anilistId simultaneously.
+const probeInFlight = new Map();
 
 // ── Skeleton components ───────────────────────────────────────────────────────
 function EpisodeSkeleton() {
@@ -88,10 +78,8 @@ export default function WatchClient({ animeId, epSlug }) {
     { ttl: 180 }
   );
 
-  const info    = infoData;
-  const eps     = epsData?.episodes || [];
-  const tmdbId  = epsData?.tmdbId   || null;
-
+  const info     = infoData;
+  const eps      = epsData?.episodes || [];
   const anime    = info?.anime?.info;
   const moreInfo = info?.anime?.moreInfo;
   const related  = info?.relatedAnimes     || [];
@@ -106,16 +94,16 @@ export default function WatchClient({ animeId, epSlug }) {
   const nextEp     = currentIdx < eps.length-1 ? eps[currentIdx + 1] : null;
   const epNumber   = parseInt(epSlug.replace("ep-", "")) || 1;
   const dispEps    = showAllEps ? eps : eps.slice(0, 60);
+  const playerEpisodeTitle = `Episode ${epNumber}`;
 
   // ── Mode ──────────────────────────────────────────────────────────────────
   const [sourceMode, setSourceMode] = useState("crysoline");
 
   // ── Source state ──────────────────────────────────────────────────────────
+  const [mounted,       setMounted]       = useState(false);
   const [sourceMap,     setSourceMap]     = useState({});
   const [sourceLoading, setSourceLoading] = useState({});
-  const [activeSrcId,   setActiveSrcId]   = useState(() => {
-    try { return loadSourcePref().sourceId || ""; } catch { return ""; }
-  });
+  const [activeSrcId,   setActiveSrcId]   = useState("");
 
   // ── Stream data ───────────────────────────────────────────────────────────
   const [cryEps,        setCryEps]       = useState([]);
@@ -124,21 +112,19 @@ export default function WatchClient({ animeId, epSlug }) {
   const [cryStreamLoad, setCrySLoad]     = useState(false);
   const [cryStreamErr,  setCrySErr]      = useState(null);
   const [cryServers,    setCryServers]   = useState([]);
-  const [crySubType,    setCrySubType]   = useState(() => {
-    try { return loadSourcePref().subType || "sub"; } catch { return "sub"; }
-  });
-  const [cryServer, setCryServer] = useState("");
-  const [crySelSrc, setCrySelSrc] = useState(null);
+  const [crySubType,    setCrySubType]   = useState("sub");
+  const [cryServer,     setCryServer]    = useState("");
+  const [crySelSrc,     setCrySelSrc]    = useState(null);
 
   // ── Embed ─────────────────────────────────────────────────────────────────
-  const [embedProvider,  setEmbedProvider]  = useState("autoembed");
+  const [embedProvider,  setEmbedProvider]  = useState("vidnest_anime");
   const [embedLang,      setEmbedLang]      = useState("sub");
   const [embedReload,    setEmbedReload]    = useState(0);
-  const [showMoreEmbed,  setShowMoreEmbed]  = useState(false);
 
   // ── Player preferences ────────────────────────────────────────────────────
   const [autoplay, setAutoplay] = useState(true);
   const [autoNext, setAutoNext] = useState(true);
+  const [theatre,  setTheatre]  = useState(false);
 
   useEffect(() => {
     try {
@@ -160,15 +146,18 @@ export default function WatchClient({ animeId, epSlug }) {
 
   // ── Watch progress ─────────────────────────────────────────────────────────
   const progressSaved = useRef(false);
-  useEffect(() => {
-    progressSaved.current = false;
-  }, [animeId, epSlug]);
+  useEffect(() => { progressSaved.current = false; }, [animeId, epSlug]);
 
   useEffect(() => {
     if (!anime || !currentEp || progressSaved.current) return;
     saveProgress({ animeId, animeName: anime.name, poster: anime.poster,
       epSlug: currentEp.epSlug, epNumber: currentEp.number, epTitle: "" });
     progressSaved.current = true;
+    fetch("/api/trending", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ animeId, title: anime.name, poster: anime.poster }),
+    }).catch(() => {});
   }, [anime, currentEp, animeId]);
 
   // ── Select + load source episodes ─────────────────────────────────────────
@@ -189,7 +178,6 @@ export default function WatchClient({ animeId, epSlug }) {
       setCryEps(d.episodes || []);
     } catch { setCryEps([]); }
     finally { setCryEpsLoad(false); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anilistId, crySubType]);
 
   // ── Fetch stream for current episode ──────────────────────────────────────
@@ -205,147 +193,223 @@ export default function WatchClient({ animeId, epSlug }) {
     if (!ep) return;
 
     const episodeId = ep.id || String(epNumber);
+    const episodeNumber = ep.number || epNumber;
     setCrySLoad(true); setCrySErr(null); setCryStream(null); setCrySelSrc(null);
 
     try {
       const src = CRYSOLINE_SOURCES.find(s => s.id === activeSrcId);
       if (src?.hasServers) {
-        const sv = await api.crysoline.servers(activeSrcId, mappedId, episodeId);
+        const sv = await api.crysoline.servers(activeSrcId, mappedId, episodeId, episodeNumber);
         setCryServers(sv.servers || []);
       }
-      const data = await api.crysoline.sources(activeSrcId, mappedId, episodeId, subType, server);
+      const data = await api.crysoline.sources(activeSrcId, mappedId, episodeId, subType, server, episodeNumber);
       setCryStream(data);
       if (data.sources?.length) {
-        setCrySelSrc(data.sources[0]);
+        const preferred = data.sources.find(s => {
+          const q = (s.quality || "").toLowerCase();
+          return q.includes("720") || q.includes("1080") || q === "auto";
+        }) || data.sources[data.sources.length - 1];
+        setCrySelSrc(preferred);
       } else {
-        // Auto-fallback: try next source in fallback chain
-        await tryFallback(activeSrcId, subType, server);
+        setCrySErr(`No streams found for episode ${epNumber}. Try another source.`);
       }
     } catch (e) {
       setCrySErr(e.message);
-      await tryFallback(activeSrcId, subType, server);
     } finally { setCrySLoad(false); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSrcId, sourceMap, cryEps, epNumber, crySubType, cryServer]);
 
   // ── Automatic source fallback chain ───────────────────────────────────────
   const tryFallback = useCallback(async (failedSourceId, subType, server) => {
+    const activeIds   = CRYSOLINE_SOURCES.map(s => s.id);
     const fallbackIds = [DEFAULT_SOURCE_ID, ...FALLBACK_SOURCE_IDS]
-      .filter(id => id !== failedSourceId && !sourceMap[id]);
+      .filter(id => id !== failedSourceId && activeIds.includes(id));
 
     for (const fid of fallbackIds) {
-      try {
-        console.log(`[watch] source ${failedSourceId} failed → trying ${fid}`);
-        const data = await api.crysoline.mapOne(anilistId, fid);
-        if (!data?.mappedId) continue;
-        setSourceMap(prev => ({ ...prev, [fid]: data.mappedId }));
-        const epsData = await api.crysoline.episodes(fid, data.mappedId, anilistId);
-        if (!epsData?.episodes?.length) continue;
+      const maxAttempts = fid === "animepahe" ? 2 : 1;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          if (attempt > 1) await new Promise(r => setTimeout(r, 4000));
+          console.log(`[watch] fallback → ${fid} (attempt ${attempt})`);
 
-        setActiveSrcId(fid);
-        setCryEps(epsData.episodes);
-        saveSourcePref({ sourceId: fid });
+          let mappedId = sourceMap[fid] || null;
+          if (!mappedId) {
+            const data = await api.crysoline.mapOne(anilistId, fid);
+            if (!data?.mappedId) break;
+            mappedId = data.mappedId;
+            setSourceMap(prev => ({ ...prev, [fid]: mappedId }));
+          }
 
-        const ep = epsData.episodes.find(e => Number(e.number) === epNumber)
-                || epsData.episodes[epNumber - 1];
-        if (!ep) continue;
+          let episodes = null;
+          if (fid === activeSrcId && cryEps.length > 0) {
+            episodes = cryEps;
+          } else {
+            const epsData = await api.crysoline.episodes(fid, mappedId, anilistId);
+            if (!epsData?.episodes?.length) break;
+            episodes = epsData.episodes;
+          }
 
-        const epId = ep.id || String(epNumber);
-        const stream = await api.crysoline.sources(fid, data.mappedId, epId, subType, server);
-        if (stream.sources?.length) {
-          setCryStream(stream);
-          setCrySelSrc(stream.sources[0]);
-          setCrySErr(null);
-          return;
-        }
-      } catch { continue; }
+          const ep = episodes.find(e => Number(e.number) === epNumber)
+                  || episodes[epNumber - 1];
+          if (!ep) break;
+
+          const epId   = ep.id || String(epNumber);
+          const stream = await api.crysoline.sources(fid, mappedId, epId, subType, server, ep.number || epNumber);
+          if (stream.sources?.length) {
+            setActiveSrcId(fid);
+            setCryEps(episodes);
+            setCryStream(stream);
+            setCrySelSrc(stream.sources[0]);
+            setCrySErr(null);
+            saveSourcePref({ sourceId: fid });
+            return;
+          }
+        } catch { continue; }
+      }
     }
-    // All fallbacks exhausted — embedded mode is disabled
     console.log("[watch] all fallbacks failed");
-    // setSourceMode("embedded"); // embedded disabled
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anilistId, epNumber, sourceMap]);
+  }, [anilistId, epNumber, sourceMap, activeSrcId, cryEps]);
 
-  // ── Auto-load on mount: race all sources ──────────────────────────────────
+  // ── Auto-load on mount ─────────────────────────────────────────────────────
   const streamRaceRan = useRef(false);
 
-  // Reset the race guard whenever the anime changes so navigating between
-  // different anime pages always triggers a fresh source race.
+  useEffect(() => {
+    setMounted(true);
+    const pref = loadSourcePref();
+    if (pref.sourceId) setActiveSrcId(pref.sourceId);
+    if (pref.subType)  setCrySubType(pref.subType);
+  }, []);
+
+  // Reset when anime changes
   useEffect(() => {
     streamRaceRan.current = false;
+    setCryEps([]);
+    setCryStream(null);
+    setCrySelSrc(null);
+    setCrySErr(null);
+    setActiveSrcId("");
   }, [animeId]);
 
+  // Reset race guard when episode changes
+  useEffect(() => { streamRaceRan.current = false; }, [epSlug]);
+
   useEffect(() => {
-    // Guard: wait until both anilistId is resolved AND we have at least one
-    // episode loaded. Without the eps check, the effect fires immediately with
-    // currentEp=null (eps are still loading), sets the ref to true, and the
-    // actual data-ready re-render is silently skipped.
     if (!currentEp || !anilistId) return;
     if (streamRaceRan.current) return;
     streamRaceRan.current = true;
 
-    const pref         = loadSourcePref();
-    const preferredId  = pref.sourceId || DEFAULT_SOURCE_ID;
-    const allSrcIds    = [
-      preferredId,
-      ...[DEFAULT_SOURCE_ID, ...FALLBACK_SOURCE_IDS].filter(id => id !== preferredId),
-    ];
-
+    const pref = loadSourcePref();
     if (pref.subType) setCrySubType(pref.subType);
 
-    let settled = false;
+    if (probeInFlight.has(anilistId)) return;
 
-    const trySource = async (sourceId) => {
-      try {
-        const data = await api.crysoline.mapOne(anilistId, sourceId);
-        if (!data?.mappedId || settled) return null;
-        const eps = await api.crysoline.episodes(sourceId, data.mappedId, anilistId);
-        if (eps?.episodes?.length > 0 && !settled) {
-          return { sourceId, mappedId: data.mappedId, episodes: eps.episodes };
+    const probePromise = (async () => {
+      const savedMode = pref.sourceMode;
+      const subType = pref.subType || "sub";
+
+      // Restore embedded if previously selected
+      if (savedMode === "embedded" && pref.embedProvider) {
+        setSourceMode("embedded");
+        setEmbedProvider(pref.embedProvider);
+        setEmbedLang(pref.embedLang || subType);
+        setEmbedReload(r => r + 1);
+        return;
+      }
+
+      // Restore Crysoline source if previously selected
+      if (savedMode === "crysoline" && pref.sourceId) {
+        try {
+          setSourceMode("crysoline");
+          const sourceId = pref.sourceId;
+          let mappedId = sourceMap[sourceId] || null;
+          if (!mappedId) {
+            const data = await api.crysoline.mapOne(anilistId, sourceId);
+            mappedId = data?.mappedId || null;
+            if (mappedId) setSourceMap(prev => ({ ...prev, [sourceId]: mappedId }));
+          }
+          if (mappedId) {
+            const epsResult = await api.crysoline.episodes(sourceId, mappedId, anilistId);
+            if (epsResult?.episodes?.length) {
+              setActiveSrcId(sourceId);
+              setCryEps(epsResult.episodes);
+              return;
+            }
+          }
+        } catch (e) {
+          console.log(`[watch] crysoline restore failed: ${e.message}`);
         }
-      } catch {}
-      return null;
-    };
+      }
 
-    (async () => {
-      const promises = allSrcIds.map(id => trySource(id));
-      const results  = await Promise.allSettled(promises);
-
-      for (const r of results) {
-        if (r.status === "fulfilled" && r.value && !settled) {
-          settled = true;
-          const { sourceId, mappedId, episodes } = r.value;
-          setSourceMap(prev => ({ ...prev, [sourceId]: mappedId }));
-          setActiveSrcId(sourceId);
-          setCryEps(episodes);
+      // Default: try AnimePahe → AnimeGG → Anizone → VidNest embedded
+      try {
+        setSourceMode("crysoline");
+        const sourceId = DEFAULT_SOURCE_ID;
+        const data = await api.crysoline.mapOne(anilistId, sourceId);
+        if (!data?.mappedId) {
+          // AnimePahe not found, try AnimeGG
+          const gg = await api.crysoline.mapOne(anilistId, "animegg");
+          if (gg?.mappedId) {
+            setSourceMap(prev => ({ ...prev, animegg: gg.mappedId }));
+            const epsResult = await api.crysoline.episodes("animegg", gg.mappedId, anilistId);
+            if (epsResult?.episodes?.length) {
+              setActiveSrcId("animegg");
+              setCryEps(epsResult.episodes);
+              return;
+            }
+          }
+          // Try Anizone
+          const az = await api.crysoline.mapOne(anilistId, "anizone");
+          if (az?.mappedId) {
+            setSourceMap(prev => ({ ...prev, anizone: az.mappedId }));
+            const epsResult = await api.crysoline.episodes("anizone", az.mappedId, anilistId);
+            if (epsResult?.episodes?.length) {
+              setActiveSrcId("anizone");
+              setCryEps(epsResult.episodes);
+              return;
+            }
+          }
+          // All Crysoline failed → fall back to VidNest embedded
+          setSourceMode("embedded");
+          setEmbedProvider("vidnest_anime");
+          setEmbedReload(r => r + 1);
           return;
         }
-      }
-
-      if (!settled) {
-        console.log("[watch] no sources settled — embedded disabled");
-        // setSourceMode("embedded"); // embedded disabled
+        const epsResult = await api.crysoline.episodes(sourceId, data.mappedId, anilistId);
+        if (!epsResult?.episodes?.length) {
+          setSourceMode("embedded");
+          setEmbedProvider("vidnest_anime");
+          setEmbedReload(r => r + 1);
+          return;
+        }
+        setSourceMap(prev => ({ ...prev, [sourceId]: data.mappedId }));
+        setActiveSrcId(sourceId);
+        setCryEps(epsResult.episodes);
+      } catch (e) {
+        setCrySErr(`Failed to load source: ${e.message}`);
       }
     })();
+
+    probeInFlight.set(anilistId, probePromise);
+    probePromise.finally(() => probeInFlight.delete(anilistId));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentEp?.epSlug, anilistId]);
 
-  // ── Re-fetch stream when ep changes (episodes are already loaded) ─────────
+  // Re-fetch stream when ep changes (episodes are already loaded)
   useEffect(() => {
     if (activeSrcId && cryEps.length > 0) fetchStream();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSrcId, cryEps, epSlug]);
 
-  // ── Called by HlsPlayer when the video URL is unreachable (proxy 502 etc) ──
-  // Instead of showing a static error, automatically try the next source.
+  // Called by HlsPlayer when the stream URL is unreachable
   const handleStreamError = useCallback(() => {
-    console.log("[watch] HlsPlayer stream error — triggering source fallback");
-    if (activeSrcId) tryFallback(activeSrcId, crySubType, cryServer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeSrcId, crySubType, cryServer]);
+    setCrySelSrc(null);
+    setCryStream(null);
+    setCrySErr("Stream failed to load. Try reloading or switching to another source.");
+  }, []);
 
   // ── Handle source button click ────────────────────────────────────────────
   async function handleSourceClick(sourceId) {
+    setSourceMode("crysoline");
+    saveSourcePref({ sourceMode: "crysoline", sourceId });
     if (sourceMap[sourceId] !== undefined) {
       const cached = sourceMap[sourceId];
       if (cached) selectSource(sourceId, cached);
@@ -371,34 +435,33 @@ export default function WatchClient({ animeId, epSlug }) {
   // ── Episode hover prefetch ─────────────────────────────────────────────────
   const prefetchEp = (ep) => {
     if (!ep) return;
-    // Prefetch anime info for target episode (it uses same animeId, so noop if cached)
     prefetch(`episodes:${animeId}`, () => api.episodes(animeId), 180);
   };
 
   // ── Navigate to episode ────────────────────────────────────────────────────
   const goToEp = useCallback((ep) => {
     if (!ep) return;
-    cancelCountdownRef.current?.();
     router.push(`/watch/${animeId}/${ep.epSlug}`);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animeId, router]);
 
-  const cancelCountdownRef = useRef(null);
+  // ── Episode progress helper ────────────────────────────────────────────────
+  function getEpProgress(animeId, epNum) {
+    if (typeof window === "undefined") return 0;
+    try {
+      const saved = parseFloat(localStorage.getItem(`cw_${animeId}_ep${epNum}`) || "0") || 0;
+      if (saved < 10) return 0;
+      const duration = 1440;
+      return Math.min(100, Math.round((saved / duration) * 100));
+    } catch { return 0; }
+  }
 
-  // ── Embedded ──────────────────────────────────────────────────────────────
-  const embedCtx = currentEp ? {
-    tmdbId, season: 1, episode: epNumber, type: "tv", lang: embedLang,
-  } : null;
-  const embedUrl     = embedCtx ? buildEmbedUrl(embedProvider, embedCtx) : null;
-  const availEmbed   = embedCtx ? PROVIDERS.filter(p => buildEmbedUrl(p.id, embedCtx) !== null).map(p => p.id) : [];
-  const visibleEmbed = showMoreEmbed ? PROVIDERS : PRIMARY_EMBED;
-
-  useEffect(() => {
-    if (!embedCtx) return;
-    const avail = PROVIDERS.filter(p => buildEmbedUrl(p.id, embedCtx) !== null);
-    if (avail.length && !avail.find(p => p.id === embedProvider)) setEmbedProvider(avail[0].id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentEp?.epSlug, tmdbId]);
+  // ── Embedded URL builder ──────────────────────────────────────────────────
+  const embedUrl = currentEp
+    ? (buildVidnestUrl(embedProvider, { anilistId, episode: epNumber, lang: embedLang })
+       || MEGAPLAY_PROVIDERS.find(p => p.id === embedProvider)?.getUrl({ anilistId, episode: epNumber, lang: embedLang })
+       || ANIMEPLAY_PROVIDERS.find(p => p.id === embedProvider)?.getUrl({ anilistId, episode: epNumber })
+       || null)
+    : null;
 
   const sidebarSections = [
     ...(seasons.length > 0 ? [{ label: "Seasons",           items: seasons }]           : []),
@@ -408,7 +471,7 @@ export default function WatchClient({ animeId, epSlug }) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className={styles.watchPage}>
+    <div className={`${styles.watchPage} ${theatre ? styles.theatreMode : ""}`}>
       <div className={styles.playerSection}>
 
         {/* Breadcrumb */}
@@ -417,7 +480,7 @@ export default function WatchClient({ animeId, epSlug }) {
           <span className={styles.sep}>›</span>
           {anime
             ? <Link href={`/anime/${animeId}`}>{anime.name}</Link>
-            : <span className={`skeleton`} style={{ width: 120, height: 14, display: "inline-block", borderRadius: 3 }} />
+            : <span className="skeleton" style={{ width: 120, height: 14, display: "inline-block", borderRadius: 3 }} />
           }
           <span className={styles.sep}>›</span>
           <span>Episode {epNumber}</span>
@@ -434,47 +497,22 @@ export default function WatchClient({ animeId, epSlug }) {
             <div className={styles.playerState}><span>⚠</span><p>Episode not found.</p></div>
           )}
 
-          {/* ── Crysoline player — PERSISTENT, never re-mounted ───────────────
-              The key is intentionally NOT set to epSlug/src — we want React to
-              keep the component instance. Only props change, so HlsPlayer does
-              an in-place update (destroy old hls, init new hls on same <video>).
-          ──────────────────────────────────────────────────────────────────── */}
+          {/* Crysoline player */}
           {currentEp && sourceMode === "crysoline" && (
             <>
               {(cryEpsLoad || cryStreamLoad) && !crySelSrc && (() => {
-                const srcName = CRYSOLINE_SOURCES.find(s => s.id === activeSrcId)?.name || activeSrcId || "the Abyss";
+                const srcName = CRYSOLINE_SOURCES.find(s => s.id === activeSrcId)?.name || activeSrcId || "source";
                 return (
                   <div className={styles.playerState}>
-                    <div className={styles.summonSpinner}>
-                      <div className={styles.summonRing} />
-                      <svg width="28" height="28" viewBox="0 0 64 64" fill="none" className={styles.summonSkull}>
-                        <path d="M18 20 C15 11 13 5 16 2 C19 5 20 11 20 20Z" fill="#c0394d" opacity=".9"/>
-                        <path d="M46 20 C49 11 51 5 48 2 C45 5 44 11 44 20Z" fill="#c0394d" opacity=".9"/>
-                        <ellipse cx="32" cy="31" rx="18" ry="16" fill="#c0394d" opacity=".85"/>
-                        <ellipse cx="23" cy="31" rx="6" ry="5.5" fill="#07060b" opacity=".92"/>
-                        <ellipse cx="23" cy="31" rx="4" ry="3.8" fill="rgba(255,60,85,0.9)"/>
-                        <ellipse cx="23" cy="31" rx="1.6" ry="3.2" fill="#07060b"/>
-                        <ellipse cx="41" cy="31" rx="6" ry="5.5" fill="#07060b" opacity=".92"/>
-                        <ellipse cx="41" cy="31" rx="4" ry="3.8" fill="rgba(255,60,85,0.9)"/>
-                        <ellipse cx="41" cy="31" rx="1.6" ry="3.2" fill="#07060b"/>
-                        <path d="M29 39 L32 34 L35 39 L34 43 L30 43Z" fill="#07060b" opacity=".9"/>
-                        <path d="M22 49 Q32 57 42 49 L41 58 Q32 63 23 58Z" fill="#8b1a28"/>
-                      </svg>
-                    </div>
-                    <p className={styles.summonTitle}>
-                      {cryEpsLoad ? "Please Wait..." : `Fetching Stream From ${srcName}…`}
-                    </p>
-                    <p className={styles.summonSub}>
-                      {cryEpsLoad ? "Please Wait..." : `Fetching Stream ${srcName} `}
-                    </p>
+                    <div className="spinner" />
+                    <p>{cryEpsLoad ? "Loading episodes…" : `Loading stream from ${srcName}…`}</p>
                   </div>
                 );
               })()}
               {!activeSrcId && !cryStreamLoad && !cryEpsLoad && (
                 <div className={styles.playerState}>
-                  <span className={styles.stateIcon}>☠</span>
-                  <p className={styles.summonTitle}>Awakening the portal…</p>
-                  <p className={styles.summonSub}>Selecting the strongest conduit</p>
+                  <div className="spinner" />
+                  <p>Selecting source…</p>
                 </div>
               )}
               {activeSrcId && !cryEpsLoad && !cryStreamLoad && cryStreamErr && !crySelSrc && (
@@ -483,16 +521,9 @@ export default function WatchClient({ animeId, epSlug }) {
                   <p className={styles.stateMsg}>{cryStreamErr}</p>
                   <div className={styles.stateBtns}>
                     <button className={styles.retryBtn} onClick={() => fetchStream()}>Retry</button>
-                    {/* Embedded fallback button — disabled
-                    <button className={styles.switchBtn} onClick={() => setSourceMode("embedded")}>
-                      Try Embedded Player
-                    </button>
-                    */}
                   </div>
                 </div>
               )}
-              {/* Player is always mounted once crySelSrc exists.
-                  Episode changes only update the src prop — no unmount. */}
               {crySelSrc && (
                 <HlsPlayer
                   src={crySelSrc.url}
@@ -504,21 +535,25 @@ export default function WatchClient({ animeId, epSlug }) {
                   onNext={nextEp ? () => goToEp(nextEp) : null}
                   hasPrev={!!prevEp}
                   hasNext={!!nextEp}
-                  malId={moreInfo?.malId || null}
+                  malId={moreInfo?.malId || anime?.malId || null}
                   epNumber={epNumber}
                   animeId={animeId}
                   autoplay={autoplay}
                   autoNext={autoNext}
                   onAutoplayChange={handleAutoplayChange}
                   onAutoNextChange={handleAutoNextChange}
+                  theatre={theatre}
+                  onTheatreChange={setTheatre}
                   onStreamError={handleStreamError}
+                  animeTitle={anime?.name || ""}
+                  episodeTitle={playerEpisodeTitle}
                 />
               )}
             </>
           )}
 
-          {/* Embedded player — disabled */}
-          {/* {currentEp && sourceMode === "embedded" && (
+          {/* Embedded player */}
+          {currentEp && sourceMode === "embedded" && (
             <>
               {!embedUrl && (
                 <div className={styles.playerState}><span>📡</span><p>Select a source below.</p></div>
@@ -536,43 +571,18 @@ export default function WatchClient({ animeId, epSlug }) {
                 />
               )}
             </>
-          )} */}
-        </div>
-
-        {/* ── HiAnime-style watching label ──────────────────────────────── */}
-        <div style={{ backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "12px", padding: "16px 20px", margin: "12px 0 0", fontFamily: "Inter,sans-serif", textAlign: "center" }}>
-          <p style={{ color: "#a0a0b0", fontSize: "13px", margin: "0 0 4px" }}>You are watching</p>
-          <p style={{ color: "#e8417a", fontWeight: 700, fontSize: "16px", margin: "0 0 8px" }}>
-            Episode {epNumber}
-          </p>
-          <p style={{ color: "#606070", fontSize: "12px", margin: 0 }}>
-            If the current server doesn't work, please try another one.
-          </p>
+          )}
         </div>
 
         {/* ── Control panel ─────────────────────────────────────────────── */}
         <div className={styles.controlPanel}>
           <div className={styles.panelHeader}>
             <div className={styles.modeTabs}>
-              <button
-                className={`${styles.modeTab} ${styles.modeTabActive}`}
-                onClick={() => setSourceMode("crysoline")}
-              >
+              <button className={`${styles.modeTab} ${styles.modeTabActive}`}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-                Stream
+                Sources
                 {activeSrcId && crySelSrc && <span className={styles.activeIndicator} />}
               </button>
-              {/* Embedded tab — disabled
-              <button
-                className={`${styles.modeTab} ${sourceMode === "embedded" ? styles.modeTabActive : ""}`}
-                onClick={() => setSourceMode("embedded")}
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-                </svg>
-                Embedded
-              </button>
-              */}
             </div>
             <button className={styles.reloadBtn} onClick={() => fetchStream()}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -582,164 +592,173 @@ export default function WatchClient({ animeId, epSlug }) {
             </button>
           </div>
 
-          {sourceMode === "crysoline" && (
-            <div className={styles.cryBody}>
-              {activeSrcId && (
-                <div className={styles.activeSource}>
-                  <span className={styles.activeDot} />
-                  <span>
-                    {CRYSOLINE_SOURCES.find(s => s.id === activeSrcId)?.name || activeSrcId}
-                    {crySelSrc ? " — streaming" : cryStreamLoad ? " — loading…" : ""}
-                  </span>
-                </div>
-              )}
-              <div className={styles.ctrlRow}>
-                <span className={styles.ctrlLabel}>Source</span>
-                <div className={styles.sourceGrid}>
-                  {CRYSOLINE_SOURCES.map(src => {
-                    const mapped  = sourceMap[src.id];
-                    const loading = sourceLoading[src.id];
-                    const active  = src.id === activeSrcId;
-                    const unavail = mapped === null;
-                    const isDefault = src.id === DEFAULT_SOURCE_ID;
-                    return (
-                      <button
-                        key={src.id}
-                        className={`${styles.srcBtn}
-                          ${active    ? styles.srcBtnActive   : ""}
-                          ${unavail   ? styles.srcBtnUnavail  : ""}
-                          ${loading   ? styles.srcBtnLoading  : ""}
-                          ${isDefault && !active && !unavail ? styles.srcBtnDefault : ""}
-                        `}
-                        onClick={() => !unavail && !loading && handleSourceClick(src.id)}
-                        disabled={loading}
-                        title={unavail ? `${src.name} — not available` : src.site}
-                      >
-                        {loading
-                          ? <><span className={styles.srcSpinner} />{src.name}</>
-                          : src.name
-                        }
-                        {isDefault && !active && !unavail && (
-                          <span className={styles.defaultTag}>default</span>
-                        )}
-                        {mapped && !active && <span className={styles.srcDot} />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+          <div className={styles.cryBody}>
+            {/* Info banner */}
+            <div className={styles.serverInfo}>
+              <p className={styles.serverInfoText}>
+                You are watching <strong>Episode {epNumber}</strong>.
+                If current server doesn&apos;t work, try other servers.
+              </p>
+            </div>
 
+            {/* SUB row */}
+            <div className={styles.serverRow}>
+              <span className={styles.serverRowLabel}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12zM6 10h2v2H6zm0 4h8v2H6zm10-4h2v2h-2zm-6 0h4v2h-4zm6 4h2v2h-2z"/></svg>
+                SUB
+              </span>
+              <div className={styles.serverBtns}>
+                {/* Crysoline sources */}
+                {CRYSOLINE_SOURCES.map(src => (
+                  <button
+                    key={src.id}
+                    className={`${styles.serverBtn} ${sourceMode === "crysoline" && activeSrcId === src.id && crySubType === "sub" ? styles.serverBtnActive : ""} ${sourceMap[src.id] === null ? styles.serverBtnUnavail : ""}`}
+                    onClick={() => { setCrySubType("sub"); saveSourcePref({ subType: "sub" }); handleSourceClick(src.id); }}
+                  >{src.name}</button>
+                ))}
+                {/* VidNest Sub */}
+                {VIDNEST_PROVIDERS.map(p => {
+                  const url = p.getUrl({ anilistId, episode: epNumber, lang: "sub" });
+                  return (
+                    <button key={`sub-${p.id}`}
+                      className={`${styles.serverBtn} ${sourceMode === "embedded" && embedProvider === p.id && embedLang === "sub" ? styles.serverBtnActive : ""}`}
+                      onClick={() => { setSourceMode("embedded"); setEmbedProvider(p.id); setEmbedLang("sub"); setEmbedReload(r => r + 1); saveSourcePref({ sourceMode: "embedded", embedProvider: p.id, embedLang: "sub", subType: "sub" }); }}
+                      disabled={!url}
+                    >{p.name}</button>
+                  );
+                })}
+                {/* MegaPlay Sub */}
+                {MEGAPLAY_PROVIDERS.filter(p => p.id !== "megaplay_dub").map(p => {
+                  const url = p.getUrl({ anilistId, episode: epNumber, lang: "sub" });
+                  return (
+                    <button key={`sub-${p.id}`}
+                      className={`${styles.serverBtn} ${sourceMode === "embedded" && embedProvider === p.id && embedLang === "sub" ? styles.serverBtnActive : ""}`}
+                      onClick={() => { setSourceMode("embedded"); setEmbedProvider(p.id); setEmbedLang("sub"); setEmbedReload(r => r + 1); saveSourcePref({ sourceMode: "embedded", embedProvider: p.id, embedLang: "sub", subType: "sub" }); }}
+                      disabled={!url}
+                    >{p.name}</button>
+                  );
+                })}
+                {/* AnimePlay Sub */}
+                {ANIMEPLAY_PROVIDERS.filter(p => p.id === "animeplay_sub").map(p => {
+                  const url = p.getUrl({ anilistId, episode: epNumber });
+                  return (
+                    <button key={`sub-${p.id}`}
+                      className={`${styles.serverBtn} ${sourceMode === "embedded" && embedProvider === p.id ? styles.serverBtnActive : ""}`}
+                      onClick={() => { setSourceMode("embedded"); setEmbedProvider(p.id); setEmbedLang("sub"); setEmbedReload(r => r + 1); saveSourcePref({ sourceMode: "embedded", embedProvider: p.id, embedLang: "sub", subType: "sub" }); }}
+                      disabled={!url}
+                    >{p.name}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* DUB row */}
+            <div className={styles.serverRow}>
+              <span className={styles.serverRowLabel}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15c1.66 0 2.99-1.34 2.99-3L15 6c0-1.66-1.34-3-3-3S9 4.34 9 6v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 15 6.7 12H5c0 3.42 2.72 6.23 6 6.72V22h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
+                DUB
+              </span>
+              <div className={styles.serverBtns}>
+                {/* Crysoline sources (dub) */}
+                {CRYSOLINE_SOURCES.map(src => (
+                  <button
+                    key={`${src.id}-dub`}
+                    className={`${styles.serverBtn} ${sourceMode === "crysoline" && activeSrcId === src.id && crySubType === "dub" ? styles.serverBtnActive : ""} ${sourceMap[src.id] === null ? styles.serverBtnUnavail : ""}`}
+                    onClick={() => { setCrySubType("dub"); saveSourcePref({ subType: "dub" }); handleSourceClick(src.id); }}
+                  >{src.name}</button>
+                ))}
+                {/* VidNest Dub */}
+                {VIDNEST_PROVIDERS.map(p => {
+                  const url = p.getUrl({ anilistId, episode: epNumber, lang: "dub" });
+                  return (
+                    <button key={`${p.id}-dub`}
+                      className={`${styles.serverBtn} ${sourceMode === "embedded" && embedProvider === p.id && embedLang === "dub" ? styles.serverBtnActive : ""}`}
+                      onClick={() => { setSourceMode("embedded"); setEmbedProvider(p.id); setEmbedLang("dub"); setEmbedReload(r => r + 1); saveSourcePref({ sourceMode: "embedded", embedProvider: p.id, embedLang: "dub", subType: "dub" }); }}
+                      disabled={!url}
+                    >{p.name}</button>
+                  );
+                })}
+                {/* MegaPlay Dub */}
+                {MEGAPLAY_PROVIDERS.filter(p => p.id !== "megaplay_ani").map(p => {
+                  const url = p.getUrl({ anilistId, episode: epNumber, lang: "dub" });
+                  return (
+                    <button key={`${p.id}-dub`}
+                      className={`${styles.serverBtn} ${sourceMode === "embedded" && embedProvider === p.id && embedLang === "dub" ? styles.serverBtnActive : ""}`}
+                      onClick={() => { setSourceMode("embedded"); setEmbedProvider(p.id); setEmbedLang("dub"); setEmbedReload(r => r + 1); saveSourcePref({ sourceMode: "embedded", embedProvider: p.id, embedLang: "dub", subType: "dub" }); }}
+                      disabled={!url}
+                    >{p.name}</button>
+                  );
+                })}
+                {/* AnimePlay Dub */}
+                {ANIMEPLAY_PROVIDERS.filter(p => p.id === "animeplay_dub").map(p => {
+                  const url = p.getUrl({ anilistId, episode: epNumber });
+                  return (
+                    <button key={`${p.id}-dub`}
+                      className={`${styles.serverBtn} ${sourceMode === "embedded" && embedProvider === p.id ? styles.serverBtnActive : ""}`}
+                      onClick={() => { setSourceMode("embedded"); setEmbedProvider(p.id); setEmbedLang("dub"); setEmbedReload(r => r + 1); saveSourcePref({ sourceMode: "embedded", embedProvider: p.id, embedLang: "dub", subType: "dub" }); }}
+                      disabled={!url}
+                    >{p.name}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quality selector */}
+            {cryStream?.sources?.length > 1 && (
               <div className={styles.ctrlRow}>
-                <span className={styles.ctrlLabel}>Audio</span>
+                <span className={styles.ctrlLabel}>Quality</span>
                 <div className={styles.btnGroup}>
-                  {["sub", "dub"].map(t => (
-                    <button key={t}
-                      className={`${styles.optBtn} ${crySubType === t ? styles.optBtnActive : ""}`}
-                      onClick={() => {
-                        setCrySubType(t);
-                        saveSourcePref({ subType: t });
-                        fetchStream(t, "");
-                        setCryServer("");
-                      }}>
-                      {t === "sub" ? "Subbed (Original)" : "Dubbed (Translated)"}
+                  {cryStream.sources.map((s, i) => (
+                    <button key={i}
+                      className={`${styles.optBtn} ${crySelSrc?.url === s.url ? styles.optBtnActive : ""}`}
+                      onClick={() => setCrySelSrc(s)}>
+                      {s.quality || `Stream ${i + 1}`}
+                      {s.isHLS && <span className={styles.hlsBadge}>HLS</span>}
                     </button>
                   ))}
                 </div>
               </div>
+            )}
 
-              {cryStream?.sources?.length > 1 && (
-                <div className={styles.ctrlRow}>
-                  <span className={styles.ctrlLabel}>Quality</span>
-                  <div className={styles.btnGroup}>
-                    {cryStream.sources.map((s, i) => (
-                      <button key={i}
-                        className={`${styles.optBtn} ${crySelSrc?.url === s.url ? styles.optBtnActive : ""}`}
-                        onClick={() => setCrySelSrc(s)}>
-                        {s.quality || `Stream ${i + 1}`}
-                        {s.isHLS && <span className={styles.hlsBadge}>HLS</span>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {cryServers.length > 1 && (
-                <div className={styles.ctrlRow}>
-                  <span className={styles.ctrlLabel}>Server</span>
-                  <div className={styles.btnGroup}>
-                    <button
-                      className={`${styles.optBtn} ${!cryServer ? styles.optBtnActive : ""}`}
-                      onClick={() => { setCryServer(""); fetchStream(crySubType, ""); }}>
-                      Default
-                    </button>
-                    {cryServers.map((sv, i) => (
-                      <button key={i}
-                        className={`${styles.optBtn} ${cryServer === (sv.name || sv) ? styles.optBtnActive : ""}`}
-                        onClick={() => { setCryServer(sv.name || sv); fetchStream(crySubType, sv.name || sv); }}>
-                        {sv.name || sv}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {(() => {
-                const vttCount = (cryStream?.subtitles || []).filter(s => {
-                  const url = (s.url || "").toLowerCase();
-                  return !url.includes(".ass") && !url.includes(".ssa");
-                }).length;
-                if (!vttCount) return null;
-                return (
-                  <div className={styles.subInfo}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="2" y="7" width="20" height="14" rx="2"/>
-                      <path d="M7 12h4m-4 4h10M15 12h2"/>
-                    </svg>
-                    {vttCount} subtitle track{vttCount > 1 ? "s" : ""} available
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-
-          {/* Embedded control panel — disabled */}
-          {/* {sourceMode === "embedded" && (
-            <div className={styles.cryBody}>
+            {/* Server selector */}
+            {cryServers.length > 1 && (
               <div className={styles.ctrlRow}>
-                <span className={styles.ctrlLabel}>Provider</span>
-                <div className={styles.sourceGrid}>
-                  {visibleEmbed.map(p => {
-                    const avail  = availEmbed.includes(p.id);
-                    const active = p.id === embedProvider;
-                    return (
-                      <button key={p.id}
-                        className={`${styles.srcBtn} ${active ? styles.srcBtnActive : ""} ${!avail ? styles.srcBtnUnavail : ""}`}
-                        onClick={() => avail && setEmbedProvider(p.id)}
-                        disabled={!avail}>
-                        {p.name}
-                        {avail && <span className={styles.srcDot} />}
-                      </button>
-                    );
-                  })}
-                  <button className={styles.moreBtn} onClick={() => setShowMoreEmbed(v => !v)}>
-                    {showMoreEmbed ? "Show less" : `+${PROVIDERS.length - PRIMARY_EMBED.length} more`}
+                <span className={styles.ctrlLabel}>Server</span>
+                <div className={styles.btnGroup}>
+                  <button
+                    className={`${styles.optBtn} ${!cryServer ? styles.optBtnActive : ""}`}
+                    onClick={() => { setCryServer(""); fetchStream(crySubType, ""); }}>
+                    Default
                   </button>
-                </div>
-              </div>
-              <div className={styles.ctrlRow}>
-                <span className={styles.ctrlLabel}>Audio</span>
-                <div className={styles.btnGroup}>
-                  {["sub", "dub"].map(l => (
-                    <button key={l}
-                      className={`${styles.optBtn} ${embedLang === l ? styles.optBtnActive : ""}`}
-                      onClick={() => { setEmbedLang(l); setEmbedReload(r => r + 1); }}>
-                      {l === "sub" ? "Subbed (Original)" : "Dubbed (Translated)"}
+                  {cryServers.map((sv, i) => (
+                    <button key={i}
+                      className={`${styles.optBtn} ${cryServer === (sv.name || sv) ? styles.optBtnActive : ""}`}
+                      onClick={() => { setCryServer(sv.name || sv); fetchStream(crySubType, sv.name || sv); }}>
+                      {sv.name || sv}
                     </button>
                   ))}
                 </div>
               </div>
-            </div>
-          )} */}
+            )}
+
+            {/* Subtitle count info */}
+            {(() => {
+              const vttCount = (cryStream?.subtitles || []).filter(s => {
+                const url = (s.url || "").toLowerCase();
+                return !url.includes(".ass") && !url.includes(".ssa");
+              }).length;
+              if (!vttCount) return null;
+              return (
+                <div className={styles.subInfo}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2"/>
+                    <path d="M7 12h4m-4 4h10M15 12h2"/>
+                  </svg>
+                  {vttCount} subtitle track{vttCount > 1 ? "s" : ""} available
+                </div>
+              );
+            })()}
+          </div>
         </div>
 
         {/* Episode nav with prefetch on hover */}
@@ -760,7 +779,34 @@ export default function WatchClient({ animeId, epSlug }) {
           </button>
         </div>
 
-        {/* Anime info panel — skeleton while loading */}
+        {/* Next episode release date */}
+        {!nextEp && (info?.anime?.info?.nextAiring || info?.anime?.moreInfo?.nextAiring) && (() => {
+          const nextAiring = info?.anime?.info?.nextAiring || info?.anime?.moreInfo?.nextAiring;
+          const { airingAt, episode } = nextAiring;
+          const releaseDate = new Date(airingAt * 1000);
+          const now = new Date();
+          const diffMs = releaseDate - now;
+          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+          const formatted = releaseDate.toLocaleDateString(undefined, {
+            weekday: "short", month: "short", day: "numeric",
+          });
+          const timeStr = diffMs > 0
+            ? diffDays === 0 ? "today" : diffDays === 1 ? "tomorrow" : `in ${diffDays} days`
+            : null;
+          return (
+            <div className={styles.nextEpBanner}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+              </svg>
+              <span>
+                Episode {episode} releases on <strong>{formatted}</strong>
+                {timeStr && <> — <em>{timeStr}</em></>}
+              </span>
+            </div>
+          );
+        })()}
+
+        {/* Anime info panel */}
         {!anime ? <InfoPanelSkeleton /> : (
           <div className={styles.infoPanel}>
             <div className={styles.infoPosterWrap}>
@@ -798,44 +844,86 @@ export default function WatchClient({ animeId, epSlug }) {
                   </button>
                 )}
               </div>
+
+              {/* AniList sync panel */}
+              {anilistId && (
+                <div style={{ marginTop: 14 }}>
+                  <AniListPanel
+                    anilistId={anilistId}
+                    epNumber={epNumber}
+                    totalEpisodes={anime?.episodes?.sub || null}
+                    compact
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
 
         <CommentsSection
-          animeId={animeId}
-                    animeName={anime?.name || ""}
-          epSlug={epSlug}
+          animeId={anilistId}
+          malId={moreInfo?.malId}
           epNumber={epNumber}
+          title={anime?.name}
         />
-                {anilistId && (
-          <AniListPanel
-            anilistId={anilistId}
-            animeId={animeId}
-            animeName={anime?.name}
-            poster={anime?.poster}
-          />
-        )}
-      </div>{/* closes playerSection */}
+      </div>
 
       {/* Right column */}
-
       <div className={styles.rightCol}>
         <div className={styles.epSidebar}>
           <div className={styles.epSideHead}>
             <p className={styles.epSideTitle}>{anime?.name || "Episodes"}</p>
-            <span className={styles.epSideCount}>{eps.length} eps</span>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+              <span className={styles.epSideCount}>
+                {(() => {
+                  const loaded = eps.length;
+                  const total  = anime?.episodes?.total
+                    || info?.anime?.moreInfo?.nextAiring?.episode
+                    || null;
+                  if (total && total !== loaded) return loaded + " / " + total + " eps";
+                  return loaded + " eps";
+                })()}
+              </span>
+              {(anime?.episodes?.sub > 0 || anime?.episodes?.dub > 0) && (
+                <span style={{ fontSize: 11, display: "flex", gap: 6 }}>
+                  {anime.episodes.sub > 0 && <span className="badge badge-sub">SUB {anime.episodes.sub}</span>}
+                  {anime.episodes.dub > 0 && <span className="badge badge-dub">DUB {anime.episodes.dub}</span>}
+                </span>
+              )}
+            </div>
           </div>
+
+          {/* Season selector tabs */}
+          {seasons.length > 1 && (
+            <div className={styles.seasonTabs}>
+              {seasons.map(s => (
+                <a
+                  key={s.id}
+                  href={`/anime/${s.id}`}
+                  className={`${styles.seasonTab} ${s.id === animeId ? styles.seasonTabActive : ""}`}
+                  title={s.name || s.title}
+                >
+                  {s.name || s.title}
+                </a>
+              ))}
+            </div>
+          )}
+
           <div className={styles.epList}>
             {epsLoading && eps.length === 0
               ? <EpisodeSkeleton />
               : dispEps.map(ep => (
                   <Link key={ep.epSlug} href={`/watch/${animeId}/${ep.epSlug}`}
-                    className={`${styles.epItem} ${ep.epSlug === epSlug ? styles.epActive : ""}`}
+                    className={`${styles.epItem} ${ep.epSlug === epSlug ? styles.epActive : ""} ${ep.isFiller ? styles.epFiller : ""}`}
                     onMouseEnter={() => prefetchEp(ep)}
                   >
-                    <span className={styles.epNum}>Ep {ep.number}</span>
-                    {ep.airDate && <span className={styles.epDate}>{ep.airDate}</span>}
+                    <div className={styles.epContent}>
+                      <span className={styles.epNum}>Ep {ep.number}</span>
+                      {ep.isFiller && <span className={styles.fillerBadge}>FILLER</span>}
+                    </div>
+                    {getEpProgress(animeId, ep.number) > 0 && (
+                      <div className={styles.epProgress} style={{ width: `${getEpProgress(animeId, ep.number)}%` }} />
+                    )}
                   </Link>
                 ))
             }

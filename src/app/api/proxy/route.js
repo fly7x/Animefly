@@ -1,121 +1,137 @@
 /**
- * GET /api/proxy  — THIN REDIRECT SHIM
+ * GET /api/proxy?url=<encoded>&referer=<encoded>
  *
- * The real proxy is now the Cloudflare Worker at NEXT_PUBLIC_PROXY_URL.
- * This route exists ONLY so that any hardcoded /api/proxy URLs in the
- * codebase continue to work during the transition.
+ * Full server-side proxy with CDN-specific referer handling.
  *
- * In production: set NEXT_PUBLIC_PROXY_URL in Vercel env vars.
- * All requests are 302-redirected to the CF worker — zero origin transfer.
+ * Handles:
+ *  - m3u8 manifests: fetched server-side, segments rewritten to proxy through here
+ *  - Segment/binary: streamed with byte-range support
+ *  - CORS: all responses include Access-Control-Allow-Origin: *
  *
- * If NEXT_PUBLIC_PROXY_URL is not set (local dev), this falls back to
- * the lightweight local implementation below so development still works.
+ * CRITICAL FIX: When running behind Nginx, request.url has host=localhost:3000.
+ * We must use X-Forwarded-Host / X-Forwarded-Proto (set by Nginx) to build
+ * the correct public origin for m3u8 URL rewriting. Without this, all rewritten
+ * segment URLs point to localhost:3000 and fail in the browser.
  */
 
 import { NextResponse } from "next/server";
 
-const CF_PROXY = process.env.NEXT_PUBLIC_PROXY_URL || "";
-
-// ── Local fallback (dev only) ─────────────────────────────────────────────────
-
-function isM3U8(url, contentType) {
-  return (
-    url.includes(".m3u8") ||
-    (contentType || "").includes("mpegurl") ||
-    (contentType || "").includes("x-mpegurl")
-  );
-}
-
-/**
- * Dev-mode rewriter: segments returned as absolute CDN URLs (not proxied).
- * Matches CF worker behaviour so dev and prod behave identically.
- */
-function rewriteM3U8Dev(text, manifestUrl, referer, origin) {
-  const base = new URL(manifestUrl);
-  const lines = text.split("\n");
-
-  function resolveAbsolute(rawUri) {
-    const trimmed = rawUri.trim();
-    if (!trimmed || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return rawUri;
-    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
-    if (trimmed.startsWith("//")) return base.protocol + trimmed;
-    if (trimmed.startsWith("/")) return `${base.protocol}//${base.host}${trimmed}`;
-    const dir = base.href.substring(0, base.href.lastIndexOf("/") + 1);
-    return new URL(trimmed, dir).href;
-  }
-
-  function toProxyUrl(rawUri) {
-    try {
-      const absolute = resolveAbsolute(rawUri);
-      const params = new URLSearchParams({ url: absolute });
-      if (referer) params.set("referer", referer);
-      return `${origin}/api/proxy?${params.toString()}`;
-    } catch { return rawUri; }
-  }
-
-  function isSubManifest(uri) {
-    const u = uri.trim().toLowerCase().split("?")[0];
-    return u.endsWith(".m3u8") || u.includes(".m3u8");
-  }
-
-  return lines.map(line => {
-    const trimmed = line.trim();
-    if (!trimmed) return line;
-
-    if (trimmed.startsWith("#")) {
-      return line
-        .replace(/URI="([^"]+)"/g, (_, uri) => {
-          if (uri.startsWith("data:")) return `URI="${uri}"`;
-          return `URI="${toProxyUrl(uri)}"`;
-        })
-        .replace(/URI='([^']+)'/g, (_, uri) => {
-          if (uri.startsWith("data:")) return `URI='${uri}'`;
-          return `URI='${toProxyUrl(uri)}'`;
-        });
-    }
-
-    if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return line;
-
-    // Sub-manifests → proxy; plain segments → absolute CDN URL (not proxied)
-    if (isSubManifest(trimmed)) return toProxyUrl(trimmed);
-    try { return resolveAbsolute(trimmed); } catch { return line; }
-  }).join("\n");
-}
-
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
 
-export async function GET(request) {
+/**
+ * Determine the public-facing origin for URL rewriting in m3u8 manifests.
+ */
+function getPublicOrigin(request) {
+  const fwdHost  = request.headers.get("x-forwarded-host");
+  const fwdProto = request.headers.get("x-forwarded-proto") || "https";
+  if (fwdHost) {
+    const host = fwdHost.split(",")[0].trim();
+    return `${fwdProto}://${host}`;
+  }
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  }
   const reqUrl = new URL(request.url);
-  const rawUrl = reqUrl.searchParams.get("url");
+  return `${reqUrl.protocol}//${reqUrl.host}`;
+}
+
+function isM3U8(url, ct) {
+  return url.includes(".m3u8") || (ct || "").toLowerCase().includes("mpegurl");
+}
+
+function rewriteM3U8(text, manifestUrl, referer, origin) {
+  const base = new URL(manifestUrl);
+
+  // CDN-specific referer overrides for segment URLs
+  const effectiveReferer = (base.hostname.includes("owocdn.top") || base.hostname.includes("uwucdn.top"))
+    ? "https://kwik.cx/"
+    : base.hostname.includes("vid-cdn.xyz")
+    ? "https://anizone.to/"
+    : base.hostname.includes("burntburst45.store") || base.hostname.includes("burntburst")
+    ? "https://play.echovideo.ru/"
+    : base.hostname.includes("mewstream") || base.hostname.includes("mewcdn")
+    ? "https://megaplay.buzz/"
+    : base.hostname.includes("flareon.click")
+    ? "https://hikari.gg/"
+    : base.hostname.includes("kuro.gg") || base.hostname.includes("anichi")
+    ? "https://anichi.me/"
+    : base.hostname.includes("anidb.app")
+    ? "https://anidb.app/"
+    : base.hostname.includes("cinewave2.site") || base.hostname.includes("cinewave")
+    ? "https://megaplay.buzz/"
+    : base.hostname.includes("newterrafoods.store")
+    ? "https://allanime.uns.bio/"
+    : base.hostname.includes("animeonsen.xyz")
+    ? "https://www.animeonsen.xyz/"
+    : referer;
+
+  function abs(raw) {
+    const t = raw.trim();
+    if (!t || t.startsWith("data:") || t.startsWith("blob:")) return raw;
+    if (t.startsWith("https://") || t.startsWith("http://")) return t;
+    if (t.startsWith("//")) return base.protocol + t;
+    if (t.startsWith("/")) return base.protocol + "//" + base.host + t;
+    const dir = base.href.substring(0, base.href.lastIndexOf("/") + 1);
+    try { return new URL(t, dir).href; } catch { return raw; }
+  }
+
+  function toProxy(raw) {
+    const absolute = abs(raw.trim());
+    if (absolute.includes("/api/proxy?")) return raw;
+    try {
+      const p = new URLSearchParams({ url: absolute });
+      if (effectiveReferer) p.set("referer", effectiveReferer);
+      return origin + "/api/proxy?" + p.toString();
+    } catch { return raw; }
+  }
+
+  function rewriteTagLine(line) {
+    return line.replace(/URI="([^"]+)"/g, function(_, u) {
+      return 'URI="' + toProxy(u) + '"';
+    });
+  }
+
+  return text.split("\n").map(function(line) {
+    const t = line.trim();
+    if (!t) return line;
+    if (t.startsWith("#")) {
+      if (t.includes('URI="')) return rewriteTagLine(t);
+      return line;
+    }
+    return toProxy(t);
+  }).join("\n");
+}
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin":  "*",
+  "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+  "Access-Control-Allow-Headers": "Range, Content-Type",
+  "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges",
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
+export async function GET(request) {
+  const reqUrl  = new URL(request.url);
+  const rawUrl  = reqUrl.searchParams.get("url");
   const referer = reqUrl.searchParams.get("referer") || "";
+  if (!rawUrl) return NextResponse.json({ error: "url param required" }, { status: 400 });
 
-  if (!rawUrl) {
-    return NextResponse.json({ error: "url param required" }, { status: 400 });
-  }
-
-  // ── Production: redirect to CF Worker (zero Vercel bandwidth) ────────────
-  if (CF_PROXY) {
-    const cfUrl = new URL(`${CF_PROXY}/proxy`);
-    cfUrl.searchParams.set("url", rawUrl);
-    if (referer) cfUrl.searchParams.set("referer", referer);
-    return NextResponse.redirect(cfUrl.toString(), 302);
-  }
-
-  // ── Development fallback ──────────────────────────────────────────────────
   let targetUrl;
   try { targetUrl = new URL(decodeURIComponent(rawUrl)); }
   catch { return NextResponse.json({ error: "Invalid URL" }, { status: 400 }); }
 
-  if (!["http:", "https:"].includes(targetUrl.protocol)) {
+  if (!["http:", "https:"].includes(targetUrl.protocol))
     return NextResponse.json({ error: "Only http/https allowed" }, { status: 400 });
-  }
 
   const effectiveReferer = referer
     ? decodeURIComponent(referer)
     : `${targetUrl.protocol}//${targetUrl.hostname}/`;
 
-  const upstreamHeaders = {
+  const upHeaders = {
     "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Accept":          "*/*",
     "Accept-Language": "en-US,en;q=0.9",
@@ -124,62 +140,264 @@ export async function GET(request) {
     "Origin":          `${targetUrl.protocol}//${targetUrl.hostname}`,
   };
 
+  // ── CDN-specific header overrides ──────────────────────────────────────────
+
+  // kwik.cx / owocdn.top / uwucdn.top (AnimePahe CDN)
+  if (targetUrl.hostname.includes("kwik.cx") || targetUrl.hostname.includes("kwik.si") || targetUrl.hostname.includes("owocdn.top") || targetUrl.hostname.includes("uwucdn.top") || targetUrl.hostname.includes("pahe.win") || targetUrl.hostname.includes("mewcdn")) {
+    upHeaders["Cookie"] = "_ga=GA1.2.1234567890.1234567890; _gid=GA1.2.1234567890.1234567890";
+    upHeaders["Referer"] = "https://kwik.cx/";
+    upHeaders["Origin"]  = "https://kwik.cx";
+  }
+
+  // AnimeGG signed play URLs
+  if (targetUrl.hostname.includes("animegg.org")) {
+    upHeaders["Referer"] = "https://animegg.org/";
+    upHeaders["Origin"]  = "https://animegg.org";
+    upHeaders["Sec-Fetch-Dest"] = "video";
+    upHeaders["Sec-Fetch-Mode"] = "no-cors";
+    upHeaders["Sec-Fetch-Site"] = "same-origin";
+  }
+
+  // Anizone CDN (vid-cdn.xyz)
+  if (targetUrl.hostname.includes("vid-cdn.xyz")) {
+    upHeaders["Referer"] = "https://anizone.to/";
+    upHeaders["Origin"]  = "https://anizone.to";
+  }
+
+  // KickAssAnime CDNs
+  if (targetUrl.hostname.includes("duckstream") || targetUrl.hostname.includes("birdstream") || targetUrl.hostname.includes("kaa.lt")) {
+    upHeaders["Referer"] = "https://kaa.lt/";
+    upHeaders["Origin"]  = "https://kaa.lt";
+  }
+
+  // AllManga CDN
+  if (targetUrl.hostname.includes("allanimenews.com") || targetUrl.hostname.includes("allanime")) {
+    upHeaders["Referer"] = "https://allmanga.to/";
+    upHeaders["Origin"]  = "https://allmanga.to";
+  }
+
+  // burntburst45.store — AniWaves
+  if (targetUrl.hostname.includes("burntburst45.store") || targetUrl.hostname.includes("burntburst")) {
+    upHeaders["Origin"]  = "https://play.echovideo.ru";
+    upHeaders["Referer"] = "https://play.echovideo.ru/";
+  }
+
+  // mewstream / mewcdn / flareon.click — StreamX, Filmu, AniChi
+  if (targetUrl.hostname.includes("mewstream") || targetUrl.hostname.includes("mewcdn") || targetUrl.hostname.includes("flareon.click")) {
+    const cfWorker = process.env.CF_PROXY_URL;
+    if (cfWorker) {
+      const ref = targetUrl.hostname.includes("flareon") ? "https://hikari.gg/" : "https://megaplay.buzz/";
+      const rangeHeader = request.headers.get("range");
+      const cfUrl = `${cfWorker}/proxy?url=${encodeURIComponent(targetUrl.toString())}&referer=${encodeURIComponent(ref)}`;
+      try {
+        const cfRes = await fetch(cfUrl, { headers: rangeHeader ? { "Range": rangeHeader } : {} });
+        if (cfRes.ok || cfRes.status === 206) {
+          const resHeaders = { ...CORS_HEADERS, "Content-Type": cfRes.headers.get("content-type") || "application/octet-stream" };
+          for (const h of ["content-length","content-range","accept-ranges","cache-control"]) {
+            const v = cfRes.headers.get(h); if (v) resHeaders[h] = v;
+          }
+          if (!resHeaders["accept-ranges"]) resHeaders["accept-ranges"] = "bytes";
+          return new NextResponse(cfRes.body, { status: cfRes.status, headers: resHeaders });
+        }
+      } catch {}
+    }
+    const ref = targetUrl.hostname.includes("flareon") ? "https://hikari.gg/" : "https://megaplay.buzz/";
+    upHeaders["Referer"] = ref;
+    upHeaders["Origin"]  = new URL(ref).origin;
+  }
+
+  // AniChi / Kuro CDNs
+  if (targetUrl.hostname.includes("kuro.gg") || targetUrl.hostname.includes("anichi")) {
+    upHeaders["Referer"] = "https://anichi.me/";
+    upHeaders["Origin"]  = "https://anichi.me";
+  }
+
+  // anidap CDNs (24stream.xyz)
+  if (targetUrl.hostname.includes("24stream.xyz")) {
+    const cfWorker = process.env.CF_PROXY_URL;
+    if (cfWorker) {
+      const rangeHeader = request.headers.get("range");
+      const cfUrl = `${cfWorker}/proxy?url=${encodeURIComponent(targetUrl.toString())}&referer=${encodeURIComponent("https://allanime.day/")}`;
+      try {
+        const cfRes = await fetch(cfUrl, { headers: rangeHeader ? { "Range": rangeHeader } : {} });
+        if (cfRes.ok || cfRes.status === 206) {
+          const resHeaders = { ...CORS_HEADERS, "Content-Type": cfRes.headers.get("content-type") || "application/octet-stream" };
+          for (const h of ["content-length","content-range","accept-ranges","cache-control"]) {
+            const v = cfRes.headers.get(h); if (v) resHeaders[h] = v;
+          }
+          if (!resHeaders["accept-ranges"]) resHeaders["accept-ranges"] = "bytes";
+          return new NextResponse(cfRes.body, { status: cfRes.status, headers: resHeaders });
+        }
+      } catch {}
+    }
+    upHeaders["Referer"] = "https://allanime.day/";
+    upHeaders["Origin"]  = "https://allanime.day";
+  }
+
+  // tools.fast4speed.rsvp — mochi/anidap AND allmanga
+  if (targetUrl.hostname.includes("fast4speed")) {
+    const ref = effectiveReferer.includes("animex") ? "https://animex.one/" : "https://allanime.day/";
+    upHeaders["Referer"] = effectiveReferer || ref;
+    upHeaders["Origin"]  = effectiveReferer ? new URL(effectiveReferer).origin : "https://allanime.day";
+    upHeaders["Sec-Fetch-Dest"] = "video";
+    upHeaders["Sec-Fetch-Mode"] = "no-cors";
+    upHeaders["Sec-Fetch-Site"] = "cross-site";
+  }
+
+  // hls.anidb.app — route via CF worker if available
+  if (targetUrl.hostname.includes("anidb.app")) {
+    const anidbProxy = process.env.ANIDB_PROXY_URL;
+    const cfWorker = anidbProxy || process.env.CF_PROXY_URL;
+    if (cfWorker) {
+      const ref = "https://anidb.app/";
+      const cfUrl = anidbProxy
+        ? `${cfWorker}?url=${encodeURIComponent(targetUrl.toString())}&ref=${encodeURIComponent(ref)}`
+        : `${cfWorker}/proxy?url=${encodeURIComponent(targetUrl.toString())}&referer=${encodeURIComponent(ref)}`;
+      try {
+        const cfRes = await fetch(cfUrl, {
+          headers: {
+            ...(request.headers.get("range") ? { "Range": request.headers.get("range") } : {}),
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          },
+        });
+        if (cfRes.ok || cfRes.status === 206) {
+          const contentType = cfRes.headers.get("content-type") || "";
+          const serverOrigin = getPublicOrigin(request);
+
+          if (isM3U8(targetUrl.href, contentType)) {
+            const text = await cfRes.text();
+            const rewritten = rewriteM3U8(text, targetUrl.href, ref, serverOrigin);
+            return new NextResponse(rewritten, {
+              status: 200,
+              headers: { ...CORS_HEADERS, "Content-Type": "application/vnd.apple.mpegurl", "Cache-Control": "public, max-age=30" },
+            });
+          }
+
+          const resHeaders = { ...CORS_HEADERS, "Content-Type": contentType || "application/octet-stream" };
+          for (const h of ["content-length", "content-range", "accept-ranges", "cache-control"]) {
+            const v = cfRes.headers.get(h); if (v) resHeaders[h] = v;
+          }
+          if (!resHeaders["accept-ranges"]) resHeaders["accept-ranges"] = "bytes";
+          if (targetUrl.pathname.endsWith(".xls") || contentType.includes("ms-excel") || contentType.includes("spreadsheet")) {
+            resHeaders["Content-Type"] = "video/mp2t";
+          }
+          return new NextResponse(cfRes.body, { status: cfRes.status, headers: resHeaders });
+        }
+      } catch (e) {
+        console.error("[proxy] anidb.app CF proxy fetch failed:", e.message);
+      }
+    }
+    upHeaders["Referer"] = "https://anidb.app/";
+    upHeaders["Origin"]  = "https://anidb.app";
+  }
+
+  // cinewave2.site — yuki provider
+  if (targetUrl.hostname.includes("cinewave2.site") || targetUrl.hostname.includes("cinewave")) {
+    upHeaders["Referer"] = "https://megaplay.buzz/";
+    upHeaders["Origin"]  = "https://megaplay.buzz";
+  }
+
+  // animeonsen.xyz — vee provider (DASH)
+  if (targetUrl.hostname.includes("animeonsen.xyz")) {
+    upHeaders["Referer"] = "https://www.animeonsen.xyz/";
+    upHeaders["Origin"]  = "https://www.animeonsen.xyz";
+  }
+
+  // newterrafoods.store / allanime — miku (allanime) provider
+  if (targetUrl.hostname.includes("newterrafoods.store") || targetUrl.hostname.includes("allanime.uns.bio")) {
+    upHeaders["Referer"] = "https://allanime.uns.bio/";
+    upHeaders["Origin"]  = "https://allanime.uns.bio";
+    upHeaders["User-Agent"] = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36";
+  }
+
+  // echovideo.ru
+  if (targetUrl.hostname.includes("echovideo.ru")) {
+    upHeaders["Origin"]  = "https://play.echovideo.ru";
+    upHeaders["Referer"] = "https://play.echovideo.ru/";
+  }
+
+  // Animelok CDN domains
+  if (targetUrl.hostname.includes("as-cdn") || targetUrl.hostname.includes("zephyrflick")) {
+    upHeaders["Referer"] = effectiveReferer;
+    try {
+      upHeaders["Origin"] = new URL(effectiveReferer).origin;
+    } catch {
+      upHeaders["Origin"] = `${targetUrl.protocol}//${targetUrl.hostname}`;
+    }
+    upHeaders["Sec-Fetch-Dest"] = "empty";
+    upHeaders["Sec-Fetch-Mode"] = "cors";
+    upHeaders["Sec-Fetch-Site"] = "same-origin";
+  }
+
   const rangeHeader = request.headers.get("range");
-  if (rangeHeader) upstreamHeaders["Range"] = rangeHeader;
+  if (rangeHeader) upHeaders["Range"] = rangeHeader;
 
   try {
     const upstream = await fetch(targetUrl.toString(), {
-      headers: upstreamHeaders,
+      headers: upHeaders,
       redirect: "follow",
     });
 
     if (!upstream.ok && upstream.status !== 206) {
-      return new NextResponse(null, { status: upstream.status });
+      console.error(`[proxy] upstream ${upstream.status} for ${targetUrl.hostname}`);
+      return new NextResponse(
+        `Upstream error ${upstream.status} from ${targetUrl.hostname}`,
+        { status: upstream.status, headers: { ...CORS_HEADERS, "Content-Type": "text/plain" } }
+      );
     }
 
-    const contentType = upstream.headers.get("content-type") || "";
-    const serverOrigin = `${reqUrl.protocol}//${reqUrl.host}`;
+    const contentType  = upstream.headers.get("content-type") || "";
+    const serverOrigin = getPublicOrigin(request);
 
+    // M3U8 manifest — rewrite all URLs to proxy through here
     if (isM3U8(targetUrl.href, contentType)) {
       const text = await upstream.text();
-      const rewritten = rewriteM3U8Dev(text, targetUrl.href, effectiveReferer, serverOrigin);
-      const h = new Headers();
-      h.set("Access-Control-Allow-Origin",  "*");
-      h.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
-      h.set("Access-Control-Allow-Headers", "Range, Content-Type");
-      h.set("Content-Type",  "application/vnd.apple.mpegurl");
-      h.set("Cache-Control", "public, max-age=60");
-      return new NextResponse(rewritten, { status: 200, headers: h });
+      const rewritten = rewriteM3U8(text, targetUrl.href, effectiveReferer, serverOrigin);
+      return new NextResponse(rewritten, {
+        status: 200,
+        headers: {
+          ...CORS_HEADERS,
+          "Content-Type":  "application/vnd.apple.mpegurl",
+          "Cache-Control": "public, max-age=30",
+        },
+      });
     }
 
-    const responseHeaders = new Headers();
-    responseHeaders.set("Access-Control-Allow-Origin",   "*");
-    responseHeaders.set("Access-Control-Allow-Methods",  "GET, HEAD, OPTIONS");
-    responseHeaders.set("Access-Control-Allow-Headers",  "Range, Content-Type");
-    responseHeaders.set("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges");
-
-    for (const h of ["content-type","content-length","content-range","accept-ranges","cache-control","etag"]) {
+    // Binary (segments, keys, etc.) — stream with byte-range support
+    const resHeaders = {
+      ...CORS_HEADERS,
+      "Content-Type": contentType || "application/octet-stream",
+    };
+    for (const h of ["content-length", "content-range", "accept-ranges", "cache-control"]) {
       const v = upstream.headers.get(h);
-      if (v) responseHeaders.set(h, v);
+      if (v) resHeaders[h] = v;
     }
-    if (!responseHeaders.has("accept-ranges")) responseHeaders.set("accept-ranges", "bytes");
+    if (!resHeaders["accept-ranges"]) resHeaders["accept-ranges"] = "bytes";
 
-    return new NextResponse(upstream.body, { status: upstream.status, headers: responseHeaders });
+    // AnimeGG direct MP4: force correct content-type
+    const isDirectMp4 = targetUrl.pathname.includes("/play/") || targetUrl.pathname.endsWith(".mp4");
+    if (isDirectMp4 && (!contentType || contentType === "application/octet-stream")) {
+      resHeaders["Content-Type"] = "video/mp4";
+    }
+
+    // Animelok CDN: disguised video files with .js extension
+    if ((targetUrl.hostname.includes("as-cdn") || targetUrl.hostname.includes("zephyrflick")) && contentType === "application/javascript") {
+      resHeaders["Content-Type"] = "video/mp4";
+    }
+
+    return new NextResponse(upstream.body, {
+      status: upstream.status,
+      headers: resHeaders,
+    });
+
   } catch (e) {
-    return NextResponse.json({ error: "Upstream fetch failed", detail: e.message }, { status: 502 });
+    console.error("[proxy] fetch error:", e.message, "→", targetUrl.hostname);
+    const isSslError = e.message?.includes("SSL") || e.message?.includes("certificate") || e.message?.includes("CERT");
+    return NextResponse.json(
+      { error: e.message, host: targetUrl.hostname },
+      { status: isSslError ? 525 : 502, headers: CORS_HEADERS }
+    );
   }
-}
-
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin":   "*",
-      "Access-Control-Allow-Methods":  "GET, HEAD, OPTIONS",
-      "Access-Control-Allow-Headers":  "Range, Content-Type",
-      "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges",
-    },
-  });
 }
 
 export async function HEAD(request) {
@@ -187,13 +405,6 @@ export async function HEAD(request) {
   const rawUrl = reqUrl.searchParams.get("url");
   const referer = reqUrl.searchParams.get("referer") || "";
   if (!rawUrl) return new NextResponse(null, { status: 400 });
-
-  if (CF_PROXY) {
-    const cfUrl = new URL(`${CF_PROXY}/proxy`);
-    cfUrl.searchParams.set("url", rawUrl);
-    if (referer) cfUrl.searchParams.set("referer", referer);
-    return NextResponse.redirect(cfUrl.toString(), 302);
-  }
 
   let targetUrl;
   try { targetUrl = new URL(decodeURIComponent(rawUrl)); }

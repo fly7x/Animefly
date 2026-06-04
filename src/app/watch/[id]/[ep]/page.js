@@ -7,6 +7,7 @@ export function generateMetadata() {
   return { title: "Watch — Fly Anime" };
 }
 
-export default function WatchPage({ params }) {
-  return <WatchClient animeId={params.id} epSlug={params.ep} />;
+export default async function WatchPage({ params }) {
+  const { id, ep } = await params;
+  return <WatchClient animeId={id} epSlug={ep} />;
 }

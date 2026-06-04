@@ -10,7 +10,42 @@
   margin: 0 auto;
   padding: 18px 20px 80px;
   align-items: start;
+  position: relative;
 }
+.watchPage::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: var(--watch-fanart, none) center top / cover no-repeat;
+  filter: blur(6px) saturate(0.6);
+  opacity: 0.08;
+  pointer-events: none;
+  z-index: -1;
+}
+.watchPage.theatreMode {
+  max-width: 100%;
+  grid-template-columns: 1fr;
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
+/* Binge Mode — cinema experience: hide everything except player */
+.watchPage.bingeMode {
+  max-width: 100%;
+  grid-template-columns: 1fr;
+  padding: 0;
+  background: #000;
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  overflow-y: auto;
+}
+.watchPage.bingeMode .playerSection { max-width: 100vw; }
+.watchPage.bingeMode .playerWrap { border-radius: 0; }
+.watchPage.bingeMode .rightCol { display: none; }
+.watchPage.bingeMode .controlPanel,
+.watchPage.bingeMode .playerControls,
+.watchPage.bingeMode .sideContent { display: none !important; }
 
 .playerSection { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .rightCol      { display: flex; flex-direction: column; gap: 14px; }
@@ -88,6 +123,112 @@
 .switchBtn:hover { color: var(--accent); border-color: rgba(192,57,77,0.40); }
 
 /* ═══════════════════════════════════════════════════════════
+   PLAYER CONTROLS BAR (Miruro-style, below player)
+   ═══════════════════════════════════════════════════════════ */
+.playerControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.pcLeft, .pcRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pcCenter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.pcBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pcBtn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  border-color: rgba(255,255,255,0.2);
+}
+.pcBtn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.pcBtnOn {
+  background: rgba(192,57,77,0.2);
+  border-color: rgba(192,57,77,0.5);
+  color: var(--accent);
+}
+.pcToggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.pcToggle:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+.pcToggleOn {
+  background: rgba(192,57,77,0.2);
+  border-color: rgba(192,57,77,0.5);
+  color: var(--accent);
+}
+.pcEpLabel {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .playerControls {
+    padding: 6px 10px;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .pcCenter {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .pcToggle {
+    font-size: 10px;
+    padding: 4px 8px;
+    gap: 3px;
+  }
+  .pcToggle svg { width: 12px; height: 12px; }
+  .pcBtn { width: 30px; height: 30px; }
+}
+
+/* ═══════════════════════════════════════════════════════════
    CONTROL PANEL
    ═══════════════════════════════════════════════════════════ */
 .controlPanel {
@@ -159,8 +300,74 @@
 .cryBody {
   display: flex;
   flex-direction: column;
+  gap: 0;
+  padding: 0;
+}
+
+/* Zenime-style server info banner */
+.serverInfo {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.serverInfoText {
+  font-size: 12px;
+  color: var(--text-3);
+  margin: 0;
+}
+.serverInfoText strong { color: var(--text-1); }
+
+/* Server row (SUB / DUB) */
+.serverRow {
+  display: flex;
+  align-items: flex-start;
   gap: 12px;
-  padding: 14px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.serverRowLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+  min-width: 48px;
+  padding-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+.serverBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.serverBtn {
+  padding: 5px 12px;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.serverBtn:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  border-color: rgba(255,255,255,0.2);
+}
+.serverBtnActive {
+  background: rgba(192,57,77,0.2) !important;
+  border-color: rgba(192,57,77,0.5) !important;
+  color: var(--accent) !important;
+}
+.serverBtnUnavail {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
 }
 
 .activeSource {
@@ -263,6 +470,29 @@
   border-radius: 50%;
   background: #4ade80;
   flex-shrink: 0;
+}
+
+/* Divider between Crysoline and embed sources */
+.srcDivider {
+  display: block;
+  width: 1px;
+  height: 22px;
+  background: var(--border-md);
+  align-self: center;
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+/* Embed badge on Vidnest buttons */
+.embedTag {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 4px;
+  background: rgba(155,89,182,0.2);
+  color: #b07fd4;
+  border-radius: 3px;
+  text-transform: uppercase;
 }
 
 /* Button group */
@@ -451,6 +681,20 @@
   background: var(--bg-elevated);
 }
 
+/* Next episode countdown */
+.nextEpCountdown {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(192,57,77,0.08), rgba(108,110,247,0.06));
+  border-bottom: 1px solid var(--border);
+}
+.nextEpIcon { font-size: 16px; }
+.nextEpInfo { display: flex; flex-direction: column; gap: 1px; }
+.nextEpLabel { font-size: 11px; color: var(--text-3); }
+.nextEpTime { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--accent); }
+
 .epSideTitle {
   font-family: var(--font-display);
   font-size: 12.5px;
@@ -470,7 +714,6 @@
 .epItem {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   padding: 7px 9px;
   border-radius: var(--r-sm);
@@ -478,9 +721,60 @@
   border: 1px solid transparent;
   text-decoration: none;
 }
+.epItemRich {
+  padding: 6px 8px;
+  align-items: flex-start;
+}
 .epItem:hover  { background: var(--bg-elevated); }
 .epActive      { background: var(--bg-elevated) !important; border-color: rgba(108,110,247,0.3) !important; }
 .epActive .epNum { color: var(--accent); }
+
+.epThumb {
+  flex-shrink: 0;
+  width: 64px;
+  height: 36px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+.epThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.epContent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.epTitle {
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.epDesc {
+  font-size: 10px;
+  color: var(--text-4);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.epMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.epRating {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 600;
+}
 
 .epNum  { font-size: 12px; font-weight: 600; color: var(--text-2); flex-shrink: 0; }
 .epDate { font-size: 10px; color: var(--text-3); }
@@ -600,4 +894,93 @@
   color: var(--text-3);
   max-width: 260px;
   line-height: 1.55;
+}
+
+/* Next episode release banner */
+.nextEpBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(var(--accent-rgb, 192, 57, 77), 0.08);
+  border: 1px solid rgba(var(--accent-rgb, 192, 57, 77), 0.2);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 4px;
+}
+.nextEpBanner svg { color: var(--accent); flex-shrink: 0; }
+.nextEpBanner strong { color: var(--text-1); }
+.nextEpBanner em { color: var(--accent); font-style: normal; }
+
+/* Season selector tabs in sidebar */
+.seasonTabs {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  padding: 8px 12px 10px; border-bottom: 1px solid var(--border);
+}
+.seasonTab {
+  padding: 4px 10px; border-radius: var(--r-sm);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  background: var(--bg-elevated); color: var(--text-3);
+  text-decoration: none; border: 1px solid var(--border);
+  transition: all 0.12s; white-space: nowrap;
+  max-width: 120px; overflow: hidden; text-overflow: ellipsis;
+}
+.seasonTab:hover { color: var(--text-1); border-color: var(--accent); }
+.seasonTabActive {
+  background: rgba(192,57,77, 0.12);
+  border-color: var(--accent, #c0394d); color: var(--accent, #c0394d);
+}
+
+/* ── Filler badge ─────────────────────────────────────────── */
+.fillerBadge {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  background: rgba(255, 140, 0, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(255, 140, 0, 0.25);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.epFiller { opacity: 0.6; }
+.epFiller:hover { opacity: 1; }
+
+/* ── Episode progress bar ─────────────────────────────────── */
+.epProgress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
+  transition: width 0.3s;
+}
+.epItem { position: relative; overflow: hidden; }
+
+/* ── Binge Mode exit button — floating top-right ── */
+.bingeExitBtn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: rgba(20, 18, 28, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.8);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0.4;
+}
+.bingeExitBtn:hover {
+  opacity: 1;
+  background: rgba(192,57,77,0.9);
+  color: #fff;
+  border-color: rgba(192,57,77,0.8);
+  transform: scale(1.05);
 }

@@ -1,153 +1,95 @@
 /**
  * Streaming providers registry
  *
- * All providers use TMDB ID for episode lookup (via tmdb.js).
- * To add a new provider: add an entry to PROVIDERS array.
- *
- * Each provider entry:
- *   id        - unique key
- *   name      - display label in UI
- *   getUrl()  - returns iframe src string or null if unavailable
- *
- * getUrl() receives:
- *   { tmdbId, season, episode, type, lang }
- *
- * SECURITY: TMDB API key lives in .env.local (server-side only).
- * Providers here only use the TMDB *ID* (a public number), not the key.
+ * Vidnest (AniList-based) and MegaPlay (AniList/MAL-based) embed sources.
+ * All TMDB-based providers have been removed.
  */
 
-export const PROVIDERS = [
-  // ── Primary providers (TMDB-based, most reliable) ───────────────────────
+/**
+ * Vidnest providers — AniList ID based, no TMDB needed.
+ * https://vidnest.fun/anime/[ANILIST_ID]/[EPISODE]/[sub|dub|hindi|...]
+ * https://vidnest.fun/animepahe/[ANILIST_ID]/[EPISODE]/[sub|dub]
+ */
+export const VIDNEST_PROVIDERS = [
   {
-    id:   "autoembed",
-    name: "AutoEmbed",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://autoembed.co/movie/tmdb/${tmdbId}`;
-      return `https://autoembed.co/tv/tmdb/${tmdbId}-${season}-${episode}`;
+    id:   "vidnest_anime",
+    name: "VidNest",
+    getUrl({ anilistId, episode = 1, lang = "sub" }) {
+      if (!anilistId) return null;
+      return `https://vidnest.fun/anime/${anilistId}/${episode}/${lang}`;
     },
   },
   {
-    id:   "autoembed2",
-    name: "AutoEmbed 2",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://player.autoembed.app/embed/movie/${tmdbId}`;
-      return `https://player.autoembed.app/embed/tv/${tmdbId}/${season}/${episode}`;
-    },
-  },
-  {
-    id:   "embedapi",
-    name: "EmbedAPI",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://player.embed-api.stream/?id=${tmdbId}`;
-      return `https://player.embed-api.stream/?id=${tmdbId}&s=${season}&e=${episode}`;
-    },
-  },
-  {
-    id:   "superembed",
-    name: "SuperEmbed",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`;
-      return `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`;
-    },
-  },
-  {
-    id:   "superembed_vip",
-    name: "SuperEmbed VIP",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://multiembed.mov/directstream.php?video_id=${tmdbId}&tmdb=1`;
-      return `https://multiembed.mov/directstream.php?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`;
-    },
-  },
-  {
-    id:   "2embed",
-    name: "2Embed",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://www.2embed.cc/embed/${tmdbId}`;
-      return `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`;
-    },
-  },
-  {
-    id:   "2embed_skin",
-    name: "2Embed Alt",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://www.2embed.skin/embed/${tmdbId}`;
-      return `https://www.2embed.skin/embedtv/${tmdbId}&s=${season}&e=${episode}`;
-    },
-  },
-  {
-    id:   "2embed_online",
-    name: "2Embed Online",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://www.2embed.online/embed/movie/${tmdbId}`;
-      return `https://www.2embed.online/embed/tv/${tmdbId}/${season}/${episode}`;
-    },
-  },
-  {
-    id:   "hnembed",
-    name: "HnEmbed",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://hnembed.cc/embed/movie/${tmdbId}`;
-      return `https://hnembed.cc/embed/tv/${tmdbId}/${season}/${episode}`;
-    },
-  },
-  {
-    id:   "primesrc",
-    name: "PrimeSrc",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://primesrc.me/embed/movie?tmdb=${tmdbId}`;
-      return `https://primesrc.me/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}`;
-    },
-  },
-  {
-    id:   "frembed",
-    name: "FrEmbed",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://frembed.bond/embed/movie/${tmdbId}`;
-      return `https://frembed.bond/embed/serie/${tmdbId}?sa=${season}&epi=${episode}`;
-    },
-  },
-  {
-    id:   "vidsrc",
-    name: "VidSrc",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://vsembed.ru/embed/movie/${tmdbId}`;
-      return `https://vsembed.ru/embed/tv/${tmdbId}/${season}/${episode}`;
-    },
-  },
-  {
-    id:   "vidsrc2",
-    name: "VidSrc 2",
-    getUrl({ tmdbId, season = 1, episode = 1, type }) {
-      if (!tmdbId) return null;
-      if (type === "movie") return `https://vsembed.su/embed/movie/${tmdbId}`;
-      return `https://vsembed.su/embed/tv/${tmdbId}/${season}/${episode}`;
+    id:   "vidnest_pahe",
+    name: "VidNest Pahe",
+    getUrl({ anilistId, episode = 1, lang = "sub" }) {
+      if (!anilistId) return null;
+      return `https://vidnest.fun/animepahe/${anilistId}/${episode}/${lang}`;
     },
   },
 ];
 
 /**
- * Build an iframe embed URL for a given provider + episode context.
+ * MegaPlay providers — AniList ID + episode based embeds.
+ * https://megaplay.buzz/stream/ani/{anilist-id}/{ep-num}/{language}
  *
- * @param {string} providerId
- * @param {object} ctx  { tmdbId, season, episode, type, lang }
- * @returns {string|null}
+ * Also supports MAL ID: https://megaplay.buzz/stream/mal/{mal-id}/{ep-num}/{language}
+ * And Anikoto/HiAnime episode IDs: https://megaplay.buzz/stream/s-2/{ep-id}/{language}
+ *
+ * Docs: https://megaplay.buzz/api
  */
-export function buildEmbedUrl(providerId, ctx) {
-  const p = PROVIDERS.find(p => p.id === providerId);
+export const MEGAPLAY_PROVIDERS = [
+  {
+    id:   "megaplay_ani",
+    name: "MegaPlay",
+    getUrl({ anilistId, episode = 1, lang = "sub" }) {
+      if (!anilistId) return null;
+      return `https://megaplay.buzz/stream/ani/${anilistId}/${episode}/${lang}`;
+    },
+  },
+  {
+    id:   "megaplay_dub",
+    name: "MegaPlay",
+    getUrl({ anilistId, episode = 1 }) {
+      if (!anilistId) return null;
+      return `https://megaplay.buzz/stream/ani/${anilistId}/${episode}/dub`;
+    },
+  },
+];
+
+/**
+ * AnimePlay providers — AniList ID based embeds (animeplay.cfd).
+ * https://animeplay.cfd/stream/ani/{anilist-id}/{ep-num}/{language}
+ *
+ * Also supports MAL ID: https://animeplay.cfd/stream/mal/{mal-id}/{ep-num}/{language}
+ * Valid language values: sub, dub
+ */
+export const ANIMEPLAY_PROVIDERS = [
+  {
+    id:   "animeplay_sub",
+    name: "AnimePlay",
+    getUrl({ anilistId, episode = 1 }) {
+      if (!anilistId) return null;
+      return `https://animeplay.cfd/stream/ani/${anilistId}/${episode}/sub`;
+    },
+  },
+  {
+    id:   "animeplay_dub",
+    name: "AnimePlay",
+    getUrl({ anilistId, episode = 1 }) {
+      if (!anilistId) return null;
+      return `https://animeplay.cfd/stream/ani/${anilistId}/${episode}/dub`;
+    },
+  },
+];
+
+// Keep PROVIDERS as empty array for backwards compat (WatchClient references it)
+export const PROVIDERS = [];
+export const SAFE_PROVIDERS = [];
+
+export function buildEmbedUrl(providerId, ctx) { return null; }
+
+export function buildVidnestUrl(providerId, ctx) {
+  const p = VIDNEST_PROVIDERS.find(p => p.id === providerId);
   return p ? p.getUrl(ctx) : null;
 }
-
-/** All provider IDs — all use TMDB for iframe embeds, no hianime dependency */
-export const SAFE_PROVIDERS = PROVIDERS.map(p => p.id);

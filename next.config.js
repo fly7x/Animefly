@@ -20,15 +20,9 @@ const nextConfig = {
 
   async headers() {
     const frameHosts = [
-      "https://autoembed.co", "https://player.autoembed.app",
-      "https://player.embed-api.stream",
-      "https://multiembed.mov",
-      "https://www.2embed.cc", "https://www.2embed.skin", "https://www.2embed.online",
-      "https://hnembed.cc", "https://hnembed.net",
-      "https://primesrc.me",
-      "https://frembed.bond",
-      "https://vsembed.ru", "https://vsembed.su",
-      "https://vidsrc.to", "https://vidsrc.xyz",
+      "https://vidnest.fun",
+      "https://megaplay.buzz",
+      "https://animeplay.cfd",
       "https://*.disqus.com",
       "https://api.crysoline.moe", "https://disqus.com",
       "https://anilist.co",
