@@ -136,6 +136,9 @@ export default function ProfileClient() {
             : <div style={s.avatarFallback}>{initials(user.username)}</div>}
           <div style={s.avatarOverlay}>Change</div>
         </div>
+        <div style={{ marginTop: "8px" }}>
+  <StreakBadge streak={stats.streak} total={stats.total} compact={true} />
+</div>
         <div style={{ flex: 1 }}>
           <h1 style={s.username}>{user.username}</h1>
           <p style={s.email}>{user.email}</p>
