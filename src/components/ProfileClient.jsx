@@ -277,7 +277,7 @@ export default function ProfileClient() {
         </div>
       )}
     </div>
-  </
+  );
 }
 
 const s = {
