@@ -166,6 +166,10 @@ export default function ProfileClient() {
       )}
 
       {/* ── Tabs ── */}
+      <div style={s.divider} />
+<StreakBadge streak={stats.streak} total={stats.total} achievements={stats.achievements} />
+<div style={s.divider} />
+
       <div style={s.tabs}>
         {[
           { key: "profile",   label: "Edit Profile" },
