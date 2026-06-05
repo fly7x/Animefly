@@ -525,20 +525,19 @@ export default function WatchClient({ animeId, epSlug }) {
                   </div>
                 </div>
               )}
-              {crySelSrc && (
-                <AnimePlayer
-  src={crySelSrc?.url}
-  isHLS={crySelSrc?.isHLS}
+              <AnimePlayer
+  src={crySelSrc.url}
+  isHLS={crySelSrc.isHLS ?? null}
   subtitles={cryStream?.subtitles || []}
   headers={cryStream?.headers || {}}
-  animeTitle={anime?.name}
-  episodeName={currentEp?.title}
+  animeTitle={anime?.name || ""}
+  episodeName={currentEp?.title || ""}
   episodeNumber={epNumber}
-  autoPlay={autoPlay}
-  autoNext={autoNext}
-  onNext={handleNext}
-  skipTimes={skipTimes}
+  onNext={nextEp ? () => goToEp(nextEp) : null}
+  onEnded={nextEp ? () => goToEp(nextEp) : null}
+  skipTimes={skipTimes || {}}
 />
+
 
 
           {/* Embedded player */}
