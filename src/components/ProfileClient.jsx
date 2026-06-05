@@ -222,12 +222,13 @@ export default function ProfileClient() {
         <button type="button" style={{ ...s.btn, backgroundColor: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#a0a0b0" }}
           onClick={() => { setCodeSent(false); setVerifyCode(""); }}>
           Resend Code
-        </button>
+                </button>
       </div>
     </>
   )}
-</form>
-
+        </form>
+        </div>
+      )}
 
       {/* ── Watchlist ── */}
       {tab === "watchlist" && (
