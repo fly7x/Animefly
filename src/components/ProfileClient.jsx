@@ -54,13 +54,14 @@ export default function ProfileClient() {
   }, [router]);
 
   async function updateAvatar(url) {
-    const res  = await fetch("/api/auth/profile", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "avatar", image: url }),
-    });
-    const data = await res.json();
-    if (data.success) { setUser(u => ({ ...u, image: url })); setShowPicker(false); }
-  }
+  const res  = await fetch("/api/auth/profile", {
+    method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "avatar", image: url }),
+  });
+  const data = await res.json();
+  if (data.error) { setMsg({ type: "error", text: data.error }); return; }
+  if (data.success) { setUser(u => ({ ...u, image: url })); setShowPicker(false); setMsg({ type: "success", text: "Avatar updated!" }); }
+}
 
   async function updateUsername(e) {
     e.preventDefault(); setSaving(true); setMsg({ type: "", text: "" });
