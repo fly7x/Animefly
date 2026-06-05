@@ -10,6 +10,13 @@ export function getDb() {
 export async function initDb() {
   const db = getDb();
   const tables = [
+    `CREATE TABLE IF NOT EXISTS achievements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  earned_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(user_id, type)
+)`,
     `CREATE TABLE IF NOT EXISTS verification_codes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT NOT NULL,
