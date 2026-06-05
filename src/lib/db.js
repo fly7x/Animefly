@@ -100,6 +100,9 @@ export async function initDb() {
   }
   // migrate: add anime_name to comments if missing
   await db.execute("ALTER TABLE comments ADD COLUMN anime_name TEXT").catch(() => {});
+  await db.execute("ALTER TABLE users ADD COLUMN streak INTEGER DEFAULT 0").catch(() => {});
+  await db.execute("ALTER TABLE users ADD COLUMN last_watch_date TEXT").catch(() => {});
+  await db.execute("ALTER TABLE users ADD COLUMN total_watched INTEGER DEFAULT 0").catch(() => {});
 }
 
 export async function getUserFromRequest(request) {
