@@ -27,7 +27,6 @@ import AnimePlayer from "./AnimePlayer";
 import CommentsSection from "./CommentsSection";
 import AniListPanel from "./AniListPanel";
 import styles from "./WatchClient.module.css";
-import AnimePlayer from "@/components/AnimePlayer";
 
 // ── Source preference persistence ─────────────────────────────────────────────
 const PREF_KEY = "player_source_pref";
