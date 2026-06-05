@@ -23,7 +23,7 @@ import { VIDNEST_PROVIDERS, MEGAPLAY_PROVIDERS, ANIMEPLAY_PROVIDERS, buildVidnes
 import { CRYSOLINE_SOURCES, DEFAULT_SOURCE_ID, FALLBACK_SOURCE_IDS } from "@/lib/crysoline";
 import { saveProgress } from "@/lib/watchProgress";
 import { useQuery, prefetch } from "@/hooks/useQuery";
-import HlsPlayer from "./HlsPlayer";
+import AnimePlayer from "./AnimePlayer";
 import CommentsSection from "./CommentsSection";
 import AniListPanel from "./AniListPanel";
 import styles from "./WatchClient.module.css";
