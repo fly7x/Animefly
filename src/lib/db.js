@@ -20,13 +20,15 @@ export async function initDb() {
 )`,
 
     `CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL UNIQUE,
-      email TEXT NOT NULL UNIQUE,
-      password TEXT NOT NULL,
-      image TEXT,
-      created_at TEXT DEFAULT (datetime('now'))
-    )`,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL,
+  image TEXT,
+  verified INTEGER DEFAULT 0,
+  preferences TEXT DEFAULT '{}',
+  created_at TEXT DEFAULT (datetime('now'))
+)`,
     `CREATE TABLE IF NOT EXISTS sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
