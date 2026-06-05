@@ -44,6 +44,7 @@ export default function ProfileClient() {
   const [watchlist, setWatchlist] = useState([]);
   const [codeSent,    setCodeSent]    = useState(false);  // ← add here
   const [verifyCode,  setVerifyCode]  = useState(""); 
+  const [stats, setStats] = useState({ streak: 0, total: 0, achievements: [] });
 
   useEffect(() => {
     fetch("/api/auth/me").then(r => r.json()).then(d => {
