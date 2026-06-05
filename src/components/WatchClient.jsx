@@ -535,7 +535,6 @@ export default function WatchClient({ animeId, epSlug }) {
   onNext={nextEp ? () => goToEp(nextEp) : null}
   onEnded={nextEp ? () => goToEp(nextEp) : null}
   skipTimes={skipTimes || {}}
-  skipTimes={skipTimes || {}}
 />
             </>
           )}
