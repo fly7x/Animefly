@@ -53,6 +53,7 @@ export default function ProfileClient() {
     });
     fetch("/api/history").then(r => r.json()).then(d => setHistory(d.history || []));
     fetch("/api/watchlist").then(r => r.json()).then(d => setWatchlist(d.watchlist || []));
+    fetch("/api/auth/stats").then(r => r.json()).then(d => setStats(d));
   }, [router]);
 
   async function updateAvatar(url) {
