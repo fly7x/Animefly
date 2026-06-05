@@ -38,7 +38,7 @@ export async function POST(request) {
 
     // Send email
     await resend.emails.send({
-      from: process.env.FROM_EMAIL || "noreply@flyanime.vercel.app",
+      from: process.env.FROM_EMAIL || "onboarding@resend.dev",
       to:   email,
       subject: "Fly Anime — Password Change Verification Code",
       html: `
