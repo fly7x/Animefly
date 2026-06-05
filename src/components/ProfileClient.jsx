@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import StreakBadge from "@/components/StreakBadge";
 
 const AVATARS = [
   { url: "https://images.weserv.nl/?url=s4.anilist.co/file/anilistcdn/character/large/b80.jpg&w=200&h=200&fit=cover",     label: "Light Yagami" },
