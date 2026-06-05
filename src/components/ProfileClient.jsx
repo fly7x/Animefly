@@ -3,9 +3,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const [codeSent,    setCodeSent]    = useState(false);
-const [verifyCode,  setVerifyCode]  = useState("");
-
 const AVATARS = [
   { url: "https://s4.anilist.co/file/anilistcdn/character/large/b80.jpg",     label: "Light Yagami" },
   { url: "https://s4.anilist.co/file/anilistcdn/character/large/b71.jpg",     label: "L Lawliet" },
@@ -44,6 +41,8 @@ export default function ProfileClient() {
   const [saving, setSaving] = useState(false);
   const [history,   setHistory]   = useState([]);
   const [watchlist, setWatchlist] = useState([]);
+  const [codeSent,    setCodeSent]    = useState(false);  // ← add here
+  const [verifyCode,  setVerifyCode]  = useState(""); 
 
   useEffect(() => {
     fetch("/api/auth/me").then(r => r.json()).then(d => {
