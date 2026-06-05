@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { getDb, getUserFromRequest } from "@/lib/db";
+import { getDb, getUserFromRequest, initDb } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
 
 export async function PUT(request) {
+  await initDb();
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
 
