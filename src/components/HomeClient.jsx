@@ -5,7 +5,6 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { getRecentlyWatched } from "@/lib/watchProgress";
-import { getUserWatching } from "@/lib/anilistClient";
 import SpotlightBanner from "./SpotlightBanner";
 import Section from "./Section";
 import AnimeCard from "./AnimeCard";
@@ -22,10 +21,6 @@ export default function HomeClient({ initialData }) {
   useEffect(() => {
     const localHistory = getRecentlyWatched(10);
     // Try AniList currently watching — silently ignore if not logged in
-    getUserWatching()
-      .then(() => {
-      setRecent(localHistory);
-      })
       .catch(() => {
         // Not logged in or API error — fall back to local only
         setRecent(localHistory);
