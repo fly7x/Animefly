@@ -524,18 +524,22 @@ export default function WatchClient({ animeId, epSlug }) {
                   </div>
                 </div>
               )}
-                            {crySelSrc && <AnimePlayer
-                src={crySelSrc.url}
-                isHLS={crySelSrc.isHLS ?? null}
-                subtitles={cryStream?.subtitles || []}
-                headers={cryStream?.headers || {}}
-                animeTitle={anime?.name || ""}
-                episodeName={currentEp?.title || ""}
-                episodeNumber={epNumber}
-                onNext={nextEp ? () => goToEp(nextEp) : null}
-                onEnded={nextEp ? () => goToEp(nextEp) : null}
-                skipTimes={skipTimes || {}}
-              />}
+                             {crySelSrc && (
+                <AnimePlayer
+                  src={crySelSrc.url}
+                  isHLS={crySelSrc.isHLS ?? null}
+                  subtitles={cryStream?.subtitles || []}
+                  headers={cryStream?.headers || {}}
+                  animeTitle={anime?.name || ""}
+                  episodeName={currentEp?.title || ""}
+                  episodeNumber={epNumber}
+                  onNext={nextEp ? () => goToEp(nextEp) : null}
+                  onEnded={nextEp ? () => goToEp(nextEp) : null}
+                  skipTimes={skipTimes || {}}
+                />
+              )}
+            </>
+          )}
 
           {/* Embedded player */}
           {currentEp && sourceMode === "embedded" && (
