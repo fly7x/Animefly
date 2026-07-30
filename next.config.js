@@ -21,13 +21,16 @@ const nextConfig = {
 
   async headers() {
     const frameHosts = [
-      "https://vidnest.fun",
-      "https://megaplay.buzz",
-      "https://animeplay.cfd",
-      "https://*.disqus.com",
-      "https://api.crysoline.moe", "https://disqus.com",
-      "https://anilist.co",
-    ].join(" ");
+  "https://vercel.live",
+  "https://vidnest.fun",
+  "https://megaplay.buzz",
+  "https://animeplay.cfd",
+  "https://*.disqus.com",
+  "https://api.crysoline.moe",
+  "https://disqus.com",
+  "https://anilist.co",
+].join(" ");
+
 
     // PROBLEM 1 FIX — CSP connect-src:
     // NEXT_PUBLIC_PROXY_URL is the Cloudflare Worker URL.
