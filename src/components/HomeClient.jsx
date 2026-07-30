@@ -18,18 +18,16 @@ export default function HomeClient({ initialData }) {
   const [error,   setError]   = useState(null);
   const [recent,  setRecent]  = useState([]);
 
-  useEffect(() => {
+    useEffect(() => {
     const localHistory = getRecentlyWatched(10);
-    // Try AniList currently watching — silently ignore if not logged in
-      .catch(() => {
-        // Not logged in or API error — fall back to local only
-     setRecent(localHistory);
+    setRecent(localHistory);
 
     if (initialData) return;
     api.home()
       .then(d => { setData(d); setLoading(false); })
       .catch(e => { setError(e.message); setLoading(false); });
   }, [initialData]);
+
 
   if (error) return (
     <div className={styles.errWrap}>
