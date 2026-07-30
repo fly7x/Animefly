@@ -23,8 +23,7 @@ export default function HomeClient({ initialData }) {
     // Try AniList currently watching — silently ignore if not logged in
       .catch(() => {
         // Not logged in or API error — fall back to local only
-        setRecent(localHistory);
-      });
+     setRecent(localHistory);
 
     if (initialData) return;
     api.home()
