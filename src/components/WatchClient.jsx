@@ -148,17 +148,22 @@ export default function WatchClient({ animeId, epSlug }) {
   const progressSaved = useRef(false);
   useEffect(() => { progressSaved.current = false; }, [animeId, epSlug]);
 
-  useEffect(() => {
-    if (!anime || !currentEp || progressSaved.current) return;
-    saveProgress({ animeId, animeName: anime.name, poster: anime.poster,
-      epSlug: currentEp.epSlug, epNumber: currentEp.number, epTitle: "" });
-    progressSaved.current = true;
-    fetch("/api/trending", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ animeId, title: anime.name, poster: anime.poster }),
-    }).catch(() => {});
-  }, [anime, currentEp, animeId]);
+  // Add this useEffect to auto-save watch history
+useEffect(() => {
+  if (!anime || !epNumber || !animeId) return;
+  fetch("/api/history", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      anime_id: animeId,
+      anime_name: anime.name,
+      poster: anime.poster || anime.image || null,
+      anilist_id: String(anilistId || ""),
+      episode_number: epNumber,
+    }),
+  }).catch(() => {});
+}, [animeId, epNumber, anime?.name]);
+
 
   // ── Select + load source episodes ─────────────────────────────────────────
   const selectSource = useCallback(async (sourceId, mappedId, subType) => {
