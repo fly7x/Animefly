@@ -44,7 +44,7 @@ export default function StreakBadge({ streak, total, achievements = [], compact 
         </div>
         <div style={s.streakRight}>
           <p style={s.totalNum}>{total}</p>
-          <p style={s.streakLabel}>Episodes</p>
+          <p style={s.streakLabel}>Animes Finished</p>
         </div>
       </div>
 
