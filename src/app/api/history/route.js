@@ -20,7 +20,7 @@ export async function POST(request) {
   const user = await getUserFromRequest(request);
   if (!user) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
 
-  const { anime_id, anime_name, poster, anilist_id, episode_number } = await request.json();
+  const { anime_id, anime_name, poster, anilist_id, episode_number, finished } = await request.json();
   const db = getDb();
 
   await db.execute({
@@ -31,20 +31,20 @@ export async function POST(request) {
     args: [user.id, anime_id, anime_name, poster, anilist_id, episode_number],
   });
 
-  // ── Update streak ────────────────────────────────────────────────
-  const today     = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  // Only update streak/count if episode was actually finished
+  if (!finished) return NextResponse.json({ success: true });
+
+  const today = new Date().toISOString().slice(0, 10);
   const userResult = await db.execute({
     sql: "SELECT streak, last_watch_date, total_watched FROM users WHERE id = ?",
     args: [user.id],
   });
-  const u = userResult.rows[0];
+  const u    = userResult.rows[0];
   const last = u?.last_watch_date;
   let streak = u?.streak || 0;
   let total  = (u?.total_watched || 0) + 1;
 
-  if (last === today) {
-    // Already watched today — don't change streak
-  } else {
+  if (last !== today) {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     streak = last === yesterday ? streak + 1 : 1;
   }
@@ -54,24 +54,17 @@ export async function POST(request) {
     args: [streak, today, total, user.id],
   });
 
-  // ── Check achievements ───────────────────────────────────────────
   const checks = [
-    { type: "first_watch",    condition: total >= 1 },
-    { type: "watched_10",     condition: total >= 10 },
-    { type: "watched_50",     condition: total >= 50 },
-    { type: "watched_100",    condition: total >= 100 },
-    { type: "streak_3",       condition: streak >= 3 },
-    { type: "streak_7",       condition: streak >= 7 },
-    { type: "streak_30",      condition: streak >= 30 },
+    { type: "first_watch",  condition: total >= 1   },
+    { type: "watched_10",   condition: total >= 10  },
+    { type: "watched_50",   condition: total >= 50  },
+    { type: "watched_100",  condition: total >= 100 },
+    { type: "streak_3",     condition: streak >= 3  },
+    { type: "streak_7",     condition: streak >= 7  },
+    { type: "streak_30",    condition: streak >= 30 },
   ];
-
   for (const { type, condition } of checks) {
-    if (condition) {
-      await db.execute({
-        sql: "INSERT OR IGNORE INTO achievements (user_id, type) VALUES (?, ?)",
-        args: [user.id, type],
-      }).catch(() => {});
-    }
+    if (condition) await db.execute({ sql: "INSERT OR IGNORE INTO achievements (user_id, type) VALUES (?, ?)", args: [user.id, type] }).catch(() => {});
   }
 
   return NextResponse.json({ success: true, streak, total });
