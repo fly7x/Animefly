@@ -149,6 +149,7 @@ export default function WatchClient({ animeId, epSlug }) {
   useEffect(() => { progressSaved.current = false; }, [animeId, epSlug]);
 
   // Add this useEffect to auto-save watch history
+// Save progress when episode changes (not finished)
 useEffect(() => {
   if (!anime || !epNumber || !animeId) return;
   fetch("/api/history", {
@@ -157,9 +158,10 @@ useEffect(() => {
     body: JSON.stringify({
       anime_id: animeId,
       anime_name: anime.name,
-      poster: anime.poster || anime.image || null,
+      poster: anime.poster || null,
       anilist_id: String(anilistId || ""),
       episode_number: epNumber,
+      finished: false,  // ← just tracking position, not finished
     }),
   }).catch(() => {});
 }, [animeId, epNumber, anime?.name]);
