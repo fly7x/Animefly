@@ -221,4 +221,147 @@ function ContinueCard({ item }) {
         <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "11px", margin: "0 0 6px" }}>
           Episode {item.ep}
         </p>
-        
+        <span style={{ backgroundColor: "var(--accent,#e8417a)", color: "#fff", fontSize: "10px", fontWeight: 700, padding: "3px 9px", borderRadius: "20px", alignSelf: "flex-start" }}>
+          ▶ Resume
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+export default function HomeClient({ initialData }) {
+  const [data,    setData]    = useState(initialData || null);
+  const [loading, setLoading] = useState(!initialData);
+  const [recent,  setRecent]  = useState([]);
+  const [heroIdx, setHeroIdx] = useState(0);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    setRecent(getRecentlyWatched(10));
+    if (initialData) return;
+    api.home()
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [initialData]);
+
+  const heroList  = (data?.spotlightAnimes    || []).slice(0, 8);
+  const trending  = data?.trendingAnimes       || [];
+  const latest    = data?.latestEpisodeAnimes  || [];
+  const topAiring = data?.topAiringAnimes      || [];
+  const topRated  = data?.mostFavoriteAnimes   || [];
+
+  const advance = useCallback(() => {
+    if (heroList.length < 2) return;
+    setHeroIdx(i => (i + 1) % heroList.length);
+  }, [heroList.length]);
+
+  useEffect(() => {
+    if (heroList.length < 2) return;
+    timerRef.current = setInterval(advance, 5000);
+    return () => clearInterval(timerRef.current);
+  }, [advance, heroList.length]);
+
+  function goTo(n) {
+    setHeroIdx((n + heroList.length) % heroList.length);
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(advance, 5000);
+  }
+
+  return (
+    <>
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        .hero-wrap:hover .hero-arrow { opacity: 1 !important; }
+        .hero-arrow:hover { border-color: var(--accent,#e8417a) !important; color: var(--accent,#e8417a) !important; }
+        .hero-dot:hover { background: rgba(255,255,255,0.6) !important; }
+      `}</style>
+
+      <div style={{ backgroundColor: "var(--bg,#0e0e12)", minHeight: "100vh", fontFamily: "Inter,-apple-system,sans-serif" }}>
+
+        {/* ── Hero slideshow ── */}
+        {heroList.length > 0 && (
+          <div className="hero-wrap" style={{
+            position: "relative",
+            width: "100%",
+            height: "460px",
+            overflow: "hidden",
+            marginBottom: "40px",
+          }}>
+            {heroList.map((a, i) => (
+              <HeroSlide key={a.id} anime={a} rank={i + 1} active={i === heroIdx} />
+            ))}
+
+            {/* Arrows — hidden until hover */}
+            {heroList.length > 1 && (
+              <>
+                <button className="hero-arrow" onClick={() => goTo(heroIdx - 1)} style={{
+                  position: "absolute", top: "50%", left: "16px", transform: "translateY(-50%)",
+                  zIndex: 20, width: "42px", height: "42px", borderRadius: "50%",
+                  background: "rgba(8,8,12,0.6)", backdropFilter: "blur(8px)",
+                  border: "1px solid rgba(255,255,255,0.1)", color: "#f0f0f5",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", opacity: 0, transition: "opacity 0.2s, border-color 0.2s, color 0.2s",
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                </button>
+                <button className="hero-arrow" onClick={() => goTo(heroIdx + 1)} style={{
+                  position: "absolute", top: "50%", right: "16px", transform: "translateY(-50%)",
+                  zIndex: 20, width: "42px", height: "42px", borderRadius: "50%",
+                  background: "rgba(8,8,12,0.6)", backdropFilter: "blur(8px)",
+                  border: "1px solid rgba(255,255,255,0.1)", color: "#f0f0f5",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", opacity: 0, transition: "opacity 0.2s, border-color 0.2s, color 0.2s",
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                </button>
+              </>
+            )}
+
+            {/* Dots */}
+            {heroList.length > 1 && (
+              <div style={{ position: "absolute", bottom: "22px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "8px", zIndex: 20 }}>
+                {heroList.map((_, i) => (
+                  <button key={i} className="hero-dot" onClick={() => goTo(i)} style={{
+                    width: i === heroIdx ? "22px" : "8px",
+                    height: "8px",
+                    borderRadius: i === heroIdx ? "4px" : "50%",
+                    backgroundColor: i === heroIdx ? "var(--accent,#e8417a)" : "rgba(255,255,255,0.35)",
+                    border: "none", cursor: "pointer", padding: 0,
+                    transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
+                  }} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Body ── */}
+        <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 24px 48px" }}>
+
+          {/* Continue Watching */}
+          {recent.length > 0 && (
+            <div style={{ marginBottom: "40px" }}>
+              <h2 style={{ fontSize: "18px", fontWeight: 600, color: "#f0f0f5", margin: "0 0 16px" }}>
+                Continue Watching
+              </h2>
+              <div style={{ display: "flex", gap: "16px", overflowX: "auto", paddingBottom: "8px", scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.1) transparent" }}>
+                {recent.map(item => <ContinueCard key={item.id} item={item} />)}
+              </div>
+            </div>
+          )}
+
+          <DiscordBanner />
+
+          <Section title="Trending Now"      href="/browse?category=trending"          items={trending}  loading={loading} />
+          <Section title="Latest Episodes"   href="/browse?category=recently-updated"   items={latest}    loading={loading} />
+          <Section title="Top Airing"        href="/browse?category=top-airing"         items={topAiring} loading={loading} />
+          <Section title="Most Popular"      href="/browse?category=most-popular"       items={topRated}  loading={loading} />
+        </div>
+      </div>
+    </>
+  );
+}
