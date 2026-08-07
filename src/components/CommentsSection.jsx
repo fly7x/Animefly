@@ -1,24 +1,37 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 
+const SORT_OPTIONS = ["Latest", "Oldest", "Most Liked"];
+
 export default function CommentsSection({ animeId, animeName, episodeId }) {
-  const [comments, setComments]   = useState([]);
-  const [user, setUser]           = useState(null);
-  const [content, setContent]     = useState("");
-  const [isSpoiler, setIsSpoiler] = useState(false);
-  const [loading, setLoading]     = useState(true);
-  const [posting, setPosting]     = useState(false);
-  const [error, setError]         = useState("");
+  const [comments,     setComments]     = useState([]);
+  const [user,         setUser]         = useState(null);
+  const [content,      setContent]      = useState("");
+  const [isSpoiler,    setIsSpoiler]    = useState(false);
+  const [loading,      setLoading]      = useState(true);
+  const [posting,      setPosting]      = useState(false);
+  const [error,        setError]        = useState("");
+  const [sort,         setSort]         = useState("Latest");
+  const [epFilter,     setEpFilter]     = useState("all");
+  const [showEpDrop,   setShowEpDrop]   = useState(false);
+  const [replyTo,      setReplyTo]      = useState(null);
+  const [replyContent, setReplyContent] = useState("");
 
   const epId = episodeId || "0";
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
-    const res  = await fetch(`/api/comments?anime_id=${animeId}&episode_id=${epId}`);
+    const url = epFilter === "all"
+      ? `/api/comments?anime_id=${animeId}&episode_id=all`
+      : `/api/comments?anime_id=${animeId}&episode_id=${epId}`;
+    const res  = await fetch(url);
     const data = await res.json();
-    setComments(data.comments || []);
+    let list = data.comments || [];
+    if (sort === "Oldest")     list = [...list].reverse();
+    if (sort === "Most Liked") list = [...list].sort((a, b) => (b.likes || 0) - (a.likes || 0));
+    setComments(list);
     setLoading(false);
-  }, [animeId, epId]);
+  }, [animeId, epId, epFilter, sort]);
 
   useEffect(() => {
     fetchComments();
@@ -31,7 +44,10 @@ export default function CommentsSection({ animeId, animeName, episodeId }) {
     setPosting(true); setError("");
     const res  = await fetch("/api/comments", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ anime_id: animeId, anime_name: animeName, episode_id: epId, content, is_spoiler: isSpoiler }),
+      body: JSON.stringify({
+        anime_id: animeId, anime_name: animeName,
+        episode_id: epId, content, is_spoiler: isSpoiler,
+      }),
     });
     const data = await res.json();
     setPosting(false);
@@ -39,73 +55,250 @@ export default function CommentsSection({ animeId, animeName, episodeId }) {
     setContent(""); setIsSpoiler(false); fetchComments();
   }
 
+  async function postReply(e, parentId, parentUsername) {
+    e.preventDefault();
+    if (!replyContent.trim()) return;
+    setPosting(true); setError("");
+    const res  = await fetch("/api/comments", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        anime_id: animeId, anime_name: animeName,
+        episode_id: epId, content: replyContent,
+        is_spoiler: false, parent_id: parentId,
+      }),
+    });
+    const data = await res.json();
+    setPosting(false);
+    if (data.error) { setError(data.error); return; }
+    setReplyContent(""); setReplyTo(null); fetchComments();
+  }
+
   async function deleteComment(id) {
     await fetch(`/api/comments?id=${id}`, { method: "DELETE" });
     fetchComments();
   }
 
-  function formatDate(str) {
-    return new Date(str).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  async function react(commentId, type) {
+    if (!user) { window.location.href = "/login"; return; }
+    await fetch("/api/comments/react", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comment_id: commentId, type }),
+    });
+    fetchComments();
+  }
+
+  function timeAgo(str) {
+    const diff = Date.now() - new Date(str).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1)  return "just now";
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    if (d < 30) return `${d}d ago`;
+    return `${Math.floor(d / 30)}mo ago`;
   }
 
   function initials(name) { return name?.charAt(0)?.toUpperCase() || "?"; }
 
   return (
     <div style={s.wrap}>
-      <h3 style={s.heading}>
-        Comments{comments.length > 0 && <span style={s.count}>{comments.length}</span>}
-      </h3>
 
-      {user ? (
-        <form onSubmit={postComment} style={s.form}>
-          <div style={s.formTop}>
+      {/* ── Header ── */}
+      <div style={s.headerBar}>
+        <h3 style={s.title}>Comments</h3>
+
+        <div style={{ position: "relative" }}>
+          <button style={s.filterBtn} onClick={() => setShowEpDrop(v => !v)}>
+            {epFilter === "all" ? "All Episodes" : `Episode ${epId}`}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: "6px" }}>
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </button>
+          {showEpDrop && (
+            <div style={s.dropMenu}>
+              <button style={s.dropItem} onClick={() => { setEpFilter("all"); setShowEpDrop(false); }}>
+                All Episodes {epFilter === "all" && "✓"}
+              </button>
+              <button style={s.dropItem} onClick={() => { setEpFilter(epId); setShowEpDrop(false); }}>
+                Episode {epId} {epFilter !== "all" && "✓"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div style={s.countBadge}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          {comments.length}
+        </div>
+
+        <select style={s.sortSelect} value={sort} onChange={e => setSort(e.target.value)}>
+          {SORT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      </div>
+
+      {/* ── Post box ── */}
+      {!user ? (
+        <div style={s.loginPrompt}>
+          Please <a href="/login" style={s.loginLink}>login</a> to post a comment
+          <textarea style={{ ...s.textarea, opacity: 0.4, pointerEvents: "none", marginTop: "12px" }}
+            placeholder="Leave a comment" rows={3} disabled />
+        </div>
+      ) : (
+        <form onSubmit={postComment} style={s.postForm}>
+          <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
             {user.image
-              ? <img src={user.image} alt={user.username} style={s.avatarImg} />
-              : <div style={s.avatar}>{initials(user.username)}</div>}
-            <textarea style={s.textarea} placeholder={`Comment as ${user.username}...`}
+              ? <img src={user.image} alt={user.username} style={s.avatarImg} onError={e => { e.target.style.display = "none"; }} />
+              : <div style={s.avatarFallback}>{initials(user.username)}</div>}
+            <textarea style={s.textarea} placeholder="Leave a comment"
               value={content} onChange={e => setContent(e.target.value)} rows={3} required />
           </div>
-          <div style={s.formBottom}>
+          <div style={s.postFormBottom}>
             <label style={s.spoilerLabel}>
               <input type="checkbox" checked={isSpoiler} onChange={e => setIsSpoiler(e.target.checked)} />
               {" "}Spoiler
             </label>
             {error && <span style={s.errText}>{error}</span>}
             <button style={s.postBtn} type="submit" disabled={posting}>
-              {posting ? "Posting..." : "Post Comment"}
+              {posting ? "Posting..." : "Post"}
             </button>
           </div>
         </form>
-      ) : (
-        <div style={s.loginPrompt}>
-          <a href="/login" style={s.loginLink}>Log in</a> to leave a comment
-        </div>
       )}
 
+      {/* ── Comments ── */}
       {loading ? (
         <p style={s.empty}>Loading comments...</p>
       ) : comments.length === 0 ? (
         <div style={s.emptyWrap}>
-          <p style={s.emptyTitle}>No comments yet.</p>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#353540" strokeWidth="1.5">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <p style={s.emptyTitle}>No comments yet</p>
           <p style={s.emptySub}>Be the first to comment!</p>
         </div>
       ) : (
         <div style={s.list}>
           {comments.map(c => (
-            <div key={c.id} style={s.comment}>
-              <div style={s.commentHeader}>
-                {c.user_avatar
-                  ? <img src={c.user_avatar} alt={c.username} style={s.avatarImg} />
-                  : <div style={s.avatar}>{initials(c.username)}</div>}
-                <div>
-                  <span style={s.username}>{c.username}</span>
-                  <span style={s.date}>{formatDate(c.created_at)}</span>
+            <div key={c.id} style={s.commentBlock}>
+
+              {/* ── Main comment ── */}
+              <div style={s.comment}>
+                <div style={s.avatarCol}>
+                  {c.user_avatar
+                    ? <img src={c.user_avatar} alt={c.username} style={s.avatarImg} onError={e => { e.target.style.display = "none"; }} />
+                    : <div style={s.avatarFallback}>{initials(c.username)}</div>}
                 </div>
-                {user?.id === c.user_id && (
-                  <button style={s.deleteBtn} onClick={() => deleteComment(c.id)}>Delete</button>
-                )}
+                <div style={s.commentBody}>
+                  <div style={s.commentMeta}>
+                    <span style={s.commentUser}>{c.username}</span>
+                    <span style={s.commentTime}>{timeAgo(c.created_at)}</span>
+                    {c.episode_id && c.episode_id !== "0" && (
+                      <span style={s.commentEp}>◂ EP {c.episode_id}</span>
+                    )}
+                  </div>
+
+                  {c.is_spoiler
+                    ? <SpoilerText text={c.content} />
+                    : <p style={s.commentText}>{c.content}</p>}
+
+                  {/* Actions */}
+                  <div style={s.commentActions}>
+                    <button style={s.actionBtn} onClick={() => react(c.id, 1)}>
+                      👍 {c.likes || 0}
+                    </button>
+                    <button style={s.actionBtn} onClick={() => react(c.id, 0)}>
+                      👎 {c.dislikes || 0}
+                    </button>
+                    {user && (
+                      <button
+                        style={{ ...s.actionBtn, color: replyTo === c.id ? "var(--accent,#e8417a)" : "#a0a0b0" }}
+                        onClick={() => {
+                          setReplyTo(replyTo === c.id ? null : c.id);
+                          setReplyContent(`@${c.username} `);
+                        }}
+                      >
+                        ↩ Reply
+                      </button>
+                    )}
+                    {user?.id === c.user_id && (
+                      <button
+                        style={{ ...s.actionBtn, color: "#606070", marginLeft: "auto" }}
+                        onClick={() => deleteComment(c.id)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Inline reply box */}
+                  {replyTo === c.id && user && (
+                    <form onSubmit={e => postReply(e, c.id, c.username)} style={s.replyForm}>
+                      <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+                        {user.image
+                          ? <img src={user.image} alt={user.username} style={{ ...s.avatarImg, width: "28px", height: "28px" }} onError={e => { e.target.style.display = "none"; }} />
+                          : <div style={{ ...s.avatarFallback, width: "28px", height: "28px", fontSize: "11px" }}>{initials(user.username)}</div>}
+                        <textarea
+                          style={{ ...s.textarea, minHeight: "60px", fontSize: "13px" }}
+                          placeholder={`Replying to @${c.username}...`}
+                          value={replyContent}
+                          onChange={e => setReplyContent(e.target.value)}
+                          rows={2}
+                          required
+                          autoFocus
+                        />
+                      </div>
+                      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "8px" }}>
+                        <button type="button" style={s.cancelBtn}
+                          onClick={() => { setReplyTo(null); setReplyContent(""); }}>
+                          Cancel
+                        </button>
+                        <button style={s.postBtn} type="submit" disabled={posting}>
+                          {posting ? "Posting..." : "Reply"}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
               </div>
-              {c.is_spoiler ? <SpoilerText text={c.content} /> : <p style={s.content}>{c.content}</p>}
+
+              {/* ── Replies ── */}
+              {(c.replies || []).length > 0 && (
+                <div style={s.repliesWrap}>
+                  {c.replies.map(r => (
+                    <div key={r.id} style={s.reply}>
+                      <div style={s.avatarCol}>
+                        {r.user_avatar
+                          ? <img src={r.user_avatar} alt={r.username} style={{ ...s.avatarImg, width: "28px", height: "28px" }} onError={e => { e.target.style.display = "none"; }} />
+                          : <div style={{ ...s.avatarFallback, width: "28px", height: "28px", fontSize: "11px" }}>{initials(r.username)}</div>}
+                      </div>
+                      <div style={s.commentBody}>
+                        <div style={s.commentMeta}>
+                          <span style={s.commentUser}>{r.username}</span>
+                          <span style={s.commentTime}>{timeAgo(r.created_at)}</span>
+                        </div>
+                        <p style={s.commentText}>{r.content}</p>
+                        <div style={s.commentActions}>
+                          <button style={s.actionBtn} onClick={() => react(r.id, 1)}>
+                            👍 {r.likes || 0}
+                          </button>
+                          <button style={s.actionBtn} onClick={() => react(r.id, 0)}>
+                            👎 {r.dislikes || 0}
+                          </button>
+                          {user?.id === r.user_id && (
+                            <button style={{ ...s.actionBtn, color: "#606070", marginLeft: "auto" }}
+                              onClick={() => deleteComment(r.id)}>
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -115,36 +308,51 @@ export default function CommentsSection({ animeId, animeName, episodeId }) {
 }
 
 function SpoilerText({ text }) {
-  const [reveal, setReveal] = useState(false);
-  return reveal
-    ? <p style={{ color: "#c0c0c8", fontSize: "14px", lineHeight: 1.6, margin: 0, cursor: "pointer" }} onClick={() => setReveal(false)}>{text}</p>
-    : <p style={{ backgroundColor: "rgba(232,65,122,0.1)", color: "#e8417a", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", userSelect: "none" }} onClick={() => setReveal(true)}>⚠ Spoiler — click to reveal</p>;
+  const [show, setShow] = useState(false);
+  return show
+    ? <p style={{ color: "#c0c0c8", fontSize: "14px", lineHeight: 1.6, margin: "6px 0", cursor: "pointer" }} onClick={() => setShow(false)}>{text}</p>
+    : <p onClick={() => setShow(true)} style={{ backgroundColor: "rgba(232,65,122,0.1)", color: "var(--accent,#e8417a)", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", margin: "6px 0", userSelect: "none" }}>
+        ⚠ Spoiler — click to reveal
+      </p>;
 }
 
 const s = {
   wrap: { padding: "24px 0", fontFamily: "Inter,sans-serif" },
-  heading: { color: "#fff", fontSize: "18px", fontWeight: 700, marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" },
-  count: { backgroundColor: "rgba(232,65,122,0.15)", color: "#e8417a", borderRadius: "20px", padding: "2px 10px", fontSize: "13px" },
-  form: { backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "16px", marginBottom: "24px" },
-  formTop: { display: "flex", gap: "12px", alignItems: "flex-start" },
-  formBottom: { display: "flex", alignItems: "center", gap: "12px", marginTop: "12px", justifyContent: "flex-end" },
-  avatar: { width: "36px", height: "36px", borderRadius: "50%", backgroundColor: "#e8417a", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "14px", flexShrink: 0 },
-  avatarImg: { width: "36px", height: "36px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 },
-  textarea: { flex: 1, backgroundColor: "#0e0e12", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "10px 12px", color: "#fff", fontSize: "14px", resize: "vertical", fontFamily: "Inter,sans-serif", outline: "none" },
-  spoilerLabel: { color: "#a0a0b0", fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" },
-  postBtn: { backgroundColor: "#e8417a", color: "#fff", border: "none", borderRadius: "8px", padding: "8px 18px", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "Inter,sans-serif" },
-  loginPrompt: { color: "#a0a0b0", fontSize: "14px", backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "10px", padding: "16px", marginBottom: "24px", textAlign: "center" },
-  loginLink: { color: "#e8417a", textDecoration: "none", fontWeight: 600 },
-  empty: { color: "#606070", fontSize: "14px" },
-  emptyWrap: { textAlign: "center", padding: "40px 0" },
-  emptyTitle: { color: "#a0a0b0", fontSize: "16px", fontWeight: 600, margin: "0 0 6px" },
+  headerBar: { display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", flexWrap: "wrap" },
+  title: { color: "var(--accent,#e8417a)", fontSize: "20px", fontWeight: 800, margin: 0 },
+  filterBtn: { display: "flex", alignItems: "center", backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.1)", color: "#a0a0b0", borderRadius: "8px", padding: "7px 12px", fontSize: "13px", cursor: "pointer", fontFamily: "Inter,sans-serif" },
+  dropMenu: { position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50, backgroundColor: "#1a1a20", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", padding: "6px", minWidth: "160px", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" },
+  dropItem: { display: "block", width: "100%", textAlign: "left", backgroundColor: "transparent", border: "none", color: "#a0a0b0", padding: "8px 12px", borderRadius: "6px", fontSize: "13px", cursor: "pointer", fontFamily: "Inter,sans-serif" },
+  countBadge: { display: "flex", alignItems: "center", gap: "5px", color: "#a0a0b0", fontSize: "14px", fontWeight: 600 },
+  sortSelect: { marginLeft: "auto", backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.1)", color: "#a0a0b0", borderRadius: "8px", padding: "7px 10px", fontSize: "13px", cursor: "pointer", fontFamily: "Inter,sans-serif", outline: "none" },
+  loginPrompt: { color: "#a0a0b0", fontSize: "14px", marginBottom: "20px" },
+  loginLink: { color: "var(--accent,#e8417a)", textDecoration: "none", fontWeight: 600 },
+  postForm: { marginBottom: "24px" },
+  textarea: { width: "100%", backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "12px 14px", color: "#fff", fontSize: "14px", resize: "vertical", fontFamily: "Inter,sans-serif", outline: "none", boxSizing: "border-box" },
+  postFormBottom: { display: "flex", alignItems: "center", gap: "12px", marginTop: "8px" },
+  spoilerLabel: { color: "#a0a0b0", fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" },
+  postBtn: { marginLeft: "auto", backgroundColor: "var(--accent,#e8417a)", color: "#fff", border: "none", borderRadius: "8px", padding: "8px 20px", fontSize: "13px", fontWeight: 700, cursor: "pointer", fontFamily: "Inter,sans-serif" },
+  cancelBtn: { backgroundColor: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#a0a0b0", borderRadius: "8px", padding: "7px 16px", fontSize: "13px", cursor: "pointer", fontFamily: "Inter,sans-serif" },
+  errText: { color: "var(--accent,#e8417a)", fontSize: "12px" },
+  empty: { color: "#606070", fontSize: "14px", padding: "20px 0" },
+  emptyWrap: { textAlign: "center", padding: "48px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" },
+  emptyTitle: { color: "#a0a0b0", fontSize: "16px", fontWeight: 600, margin: 0 },
   emptySub: { color: "#606070", fontSize: "14px", margin: 0 },
-  list: { display: "flex", flexDirection: "column", gap: "16px" },
-  comment: { backgroundColor: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "16px" },
-  commentHeader: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" },
-  username: { color: "#fff", fontWeight: 600, fontSize: "14px", display: "block" },
-  date: { color: "#606070", fontSize: "12px" },
-  deleteBtn: { marginLeft: "auto", backgroundColor: "transparent", border: "none", color: "#606070", fontSize: "12px", cursor: "pointer" },
-  content: { color: "#c0c0c8", fontSize: "14px", lineHeight: 1.6, margin: 0 },
-  errText: { color: "#e8417a", fontSize: "12px" },
+  list: { display: "flex", flexDirection: "column", gap: "0" },
+  commentBlock: { borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: "4px" },
+  comment: { display: "flex", gap: "12px", padding: "16px 0 8px" },
+  avatarCol: { flexShrink: 0 },
+  avatarImg: { width: "38px", height: "38px", borderRadius: "50%", objectFit: "cover" },
+  avatarFallback: { width: "38px", height: "38px", borderRadius: "50%", backgroundColor: "var(--accent,#e8417a)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "15px" },
+  commentBody: { flex: 1, minWidth: 0 },
+  commentMeta: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px", flexWrap: "wrap" },
+  commentUser: { color: "#fff", fontWeight: 700, fontSize: "14px" },
+  commentTime: { color: "#606070", fontSize: "12px" },
+  commentEp: { color: "#a0a0b0", fontSize: "12px" },
+  commentText: { color: "#c0c0c8", fontSize: "14px", lineHeight: 1.6, margin: "0 0 8px", wordBreak: "break-word" },
+  commentActions: { display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" },
+  actionBtn: { backgroundColor: "transparent", border: "none", color: "#606070", fontSize: "13px", cursor: "pointer", padding: "4px 0", fontFamily: "Inter,sans-serif", transition: "color 0.15s" },
+  replyForm: { marginTop: "12px", paddingLeft: "4px" },
+  repliesWrap: { marginLeft: "50px", marginBottom: "8px", paddingLeft: "16px", borderLeft: "2px solid rgba(255,255,255,0.06)" },
+  reply: { display: "flex", gap: "10px", padding: "10px 0 4px" },
 };
