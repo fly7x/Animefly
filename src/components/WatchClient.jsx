@@ -541,7 +541,7 @@ useEffect(() => {
                   episodeName={currentEp?.title || ""}
                   episodeNumber={epNumber}
                   onNext={nextEp ? () => goToEp(nextEp) : null}
-                  onEnded={nextEp ? () => goToEp(nextEp) : null}
+                   onEnded={handleVideoEnded}
                   skipTimes={skipTimes || {}}
                 />
               )}
