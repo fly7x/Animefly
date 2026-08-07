@@ -451,6 +451,22 @@ useEffect(() => {
     router.push(`/watch/${animeId}/${ep.epSlug}`);
   }, [animeId, router]);
 
+function handleVideoEnded() {
+  fetch("/api/history", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      anime_id: animeId,
+      anime_name: anime?.name,
+      poster: anime?.poster || null,
+      anilist_id: String(anilistId || ""),
+      episode_number: epNumber,
+      finished: true,
+    }),
+  }).catch(() => {});
+  if (nextEp) goToEp(nextEp);
+}
+
   // ── Episode progress helper ────────────────────────────────────────────────
   function getEpProgress(animeId, epNum) {
     if (typeof window === "undefined") return 0;
