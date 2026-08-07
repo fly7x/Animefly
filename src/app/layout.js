@@ -14,6 +14,7 @@ export const metadata = {
   title: { default: "Fly Anime — Watch Anime Free", template: "%s | Fly Anime" },
   description: "Stream anime in HD. Sub & Dub available. No account required.",
   keywords: ["anime", "watch anime", "fly-anime", "anime streaming", "free anime"],
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({ children }) {
@@ -23,23 +24,20 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </head>
       <body>
-
-      <ThemeProvider>
-        {children}
+        <ThemeProvider>
+          <AuthProvider>
+            <Suspense fallback={null}>
+              <LandingGate />
+            </Suspense>
+            <Suspense fallback={null}>
+              <Navbar />
+            </Suspense>
+            <main style={{ minHeight: "100vh", paddingTop: "var(--nav-h)" }}>
+              {children}
+            </main>
+            <Footer />
+          </AuthProvider>
         </ThemeProvider>
-        <AuthProvider>
-          {/* Redirects first-time visitors to /landing */}
-          <Suspense fallback={null}>
-            <LandingGate />
-          </Suspense>
-          <Suspense fallback={null}>
-            <Navbar />
-          </Suspense>
-          <main style={{ minHeight: "100vh", paddingTop: "var(--nav-h)" }}>
-            {children}
-          </main>
-          <Footer />
-        </AuthProvider>
       </body>
     </html>
   );
