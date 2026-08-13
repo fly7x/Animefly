@@ -90,27 +90,7 @@ export default function Footer() {
           <p className={styles.brandDesc}>
             Stream anime in HD — sub &amp; dub.<br />
              Always free.
-          </p>
-
-          {/* API Status */}
-          <div className={styles.apiStatus}>
-            <span className={styles.apiStatusLabel}>API Status</span>
-            <div className={styles.statusRow}>
-              <StatusDot up={cryUp} />
-              <span className={styles.statusName}>Crysoline</span>
-              <span className={`${styles.statusBadge} ${
-                cryUp === null
-                  ? styles.badgeChecking
-                  : cryUp
-                  ? styles.badgeUp
-                  : styles.badgeDown
-              }`}>
-                {cryUp === null ? "Consulting the oracle…" : cryUp ? "The pact holds" : "Pact weakening"}
-              </span>
-            </div>
-            <p className={styles.statusNote}>Via Cloudflare edge · 60s cache</p>
-          </div>
-        </div>
+          </p> 
 
         {/* Browse */}
         <div className={styles.col}>
